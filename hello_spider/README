@@ -1,0 +1,16 @@
+simple example of using mutantspider tools to build a web page that contains an element
+that is handled by some C++ code.
+
+Getting Started:
+
+First thing, in a console window try cd'ing to this directory (the one with this README file in it)
+and then execute:
+
+	make run_server
+	
+If this succeeds it will have compiled the C++ code and built a simple web site that includes
+the compiled code.  It will also have launched a simple web server on that site.  You can see this
+web page by opening a browser of you choice and going to:
+
+	http://localhost:5103
+

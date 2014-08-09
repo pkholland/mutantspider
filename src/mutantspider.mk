@@ -1,15 +1,15 @@
 #
-#	WebRules core makefile.  See README.makefile for basic documentation
+#	MutantSpider core makefile.  See README.makefile for basic documentation
 #
 #	Some naming conventions:
 #		1) variables defined by MutantSpider will be in the ms "namespace".  That is, they will be of the form
 #			ms.VariableName
 #		2) exceptions to #1 include:
-#			a) variables that are reasonable to type on the command line, for example "V" and "CONFIG"
-#			b) the collection of compiler and linker flags (CFLAGS, CFLAGS_release, etc...)
+#			a) variables that are reasonable to type on the command line, for example "V" and "CONFIG".
+#			b) the collection of compiler and linker flags (CFLAGS, CFLAGS_release, etc...).
 #		3) variable names in ms of the form ms.ALL_CAPS_AND_UNDERSCORES are expected to be "public"
-#			in the sense that code outside of mutantspider.mk can reasonably expect to use and manipulate those
-#		4) variable names in ms of the form ms.lower_case are expected to be "private" and should not
+#			in the sense that code outside of mutantspider.mk can reasonably expect to use and manipulate those.
+#		4) variable names in ms of the form ms.lower_case are expected to be "private" and should not.
 #			be used outside of mutantspider.mk
 #
 #	TODO list:
@@ -17,17 +17,14 @@
 #			out which files need to be expanded with which build rules
 #		2) change configuration validation (installed compilers, etc...) so that it is only triggered if
 #			you attempt to build something with that compiler.  Once #1 is done, if *.ts -> the typescript compiler
-#			then it should only check to make sure you have the typescript compiler installed if your SOURCES list
-#			contains *.ts files.  This can be done similar to the way the dir.stamp files are handled
-#		3) provide some kind of support for specifying which C compilers you want to use.  For example, if you
-#			only want to generate asm.js (and not pnacl) there should be some way to specify this.
-#		4) DO_STRIP is currently only running if the target is exactly "release".  Fix this somehow.  It's also
-#			violating the naming conventions
+#			then it should only check to make sure you have the typescript compiler installed if your SOURCES
+#			contain *.ts files.  This can be done similar to the way the dir.stamp files are handled.
+#		3) ms.do_strip is currently only running if the target is exactly "release".  Improve this somehow.
 
 
 #
 # the directory that this makefile (mutantspider.mk) is in -- relative to the orignal
-# directory that make was invoked in $(CURDIR)
+# directory in which make was invoked $(CURDIR)
 #
 ms.this_make_dir:=$(dir $(lastword $(MAKEFILE_LIST)))
 
@@ -38,7 +35,8 @@ ifeq (,$(wildcard $(ms.this_make_dir)nacl_sdk_root))
  $(info *********************************)
  $(info 'nacl_sdk_root' directory missing)
  $(info Please create a symbolic link named 'nacl_sdk_root' in $(realpath $(ms.this_make_dir)),)
- $(info pointing to the NaCl/Pepper sdk directory you want to use)
+ $(info pointing to the NaCl/Pepper sdk directory you want to use.  For information on how to)
+ $(info install the NaCl SDK, please google search for "Google Native Client SDK Download"))
  $(error )
 endif
 
@@ -61,7 +59,30 @@ endif
 ifeq (,$(shell which emcc))
  $(info *********************************)
  $(info Emscripten compiler 'emcc' is either not installed or not available in the current path)
- $(info ("which emcc" failed to find it))
+ $(info ("which emcc" failed to find it).  For information on how to install the emscripten SDK)
+ $(info please google search for "Emscripten Download".  For information on how to get a Macintosh)
+ $(info terminal window to automatically run the "source emsdk_add_path" tool suggested when you)
+ $(info run "emsdk activate latest", google search for "bashrc equivalent mac" -- you will see)
+ $(info information on using your .profile or .bash_profile file instead.  The emscripten)
+ $(info compiler may require that you have 'python2' installed as a callable tool.  Macs)
+ $(info don't normally come installed with that.  One workable solution is to create a symbolic)
+ $(info link in /usr/bin/python2 that points to the normally installed /usr/bin/python, using)
+ $(info a command line "sudo ln -s /usr/bin/python /usr/bin/python2" -- assuming that your)
+ $(info python is installed at /usr/bin/python -- which you can see by executing)
+ $(info "which python".  Note that the very first time you run the emscripten compiler on)
+ $(info your system it will create various caches and run very slowly.  Be patient!)
+ $(info )
+ $(info now...)
+ $(info )
+ $(info If you want or need to carefully control the web development tools on your system)
+ $(info you should be aware that running "source emsdk_add_path" puts the emscripten bin path)
+ $(info ahead of places like /usr/bin, and these emscripten tools come with their own version)
+ $(info of a few tools like 'node' and 'npm'.  So any shell that sources emsdk_add_path and)
+ $(info then tries to execute an undecorated 'node', will be running the version from your)
+ $(info emscript sdk.  In a similar fashion, running 'npm' with -g will place the installed)
+ $(info tools in your emscripten 'node/<version>/bin' directory.  This may, or may not be what)
+ $(info you want.  For anyone who is not picky about where these tools are installed, or what)
+ $(info version is installed, letting them install in this location could be a simple solution)
  $(error )
 endif
 
@@ -71,7 +92,7 @@ endif
 ifeq (,$(ms.INTERMEDIATE_DIR))
  ms.INTERMEDIATE_DIR:=obj
  $(info ms.INTERMEDIATE_DIR not set, so defaulting to $(CURDIR)/$(ms.INTERMEDIATE_DIR))
- $(info To remove this warning set ms.INTERMEDIATE_DIR = something prior to including mutantspider.mk)
+ $(info To remove this message set ms.INTERMEDIATE_DIR = something prior to including mutantspider.mk)
 endif
 
 #
@@ -80,7 +101,7 @@ endif
 ifeq (,$(ms.OUT_DIR))
  ms.OUT_DIR:=out
  $(info ms.OUT_DIR not set, so defaulting to $(CURDIR)/$(ms.OUT_DIR))
- $(info To remove this warning set ms.OUT_DIR = something prior to including mutantspider.mk)
+ $(info To remove this message set ms.OUT_DIR = something prior to including mutantspider.mk)
 endif
 
 #
@@ -138,6 +159,9 @@ else
  ms.NACL_LIB_PATH ?= Release
 endif
 
+#
+# the emscripten tool(s)
+#
 ms.em_cc := emcc
 ms.em_cxx := emcc
 ms.em_link := emcc
@@ -156,7 +180,7 @@ ms.em_link := emcc
 # Convert a source path to an object file path.
 #
 # $1 = Source Name
-# $2 = Arch suffix
+# $2 = Compiler suffix
 #
 ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(2).o
 
@@ -164,7 +188,7 @@ ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(
 # Convert a source path to a dependency file path.
 #
 # $1 = Source Name
-# $2 = Arch suffix
+# $2 = Compiler suffix
 #
 ms.src_to_dep=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(2).d
 
@@ -178,21 +202,21 @@ ms.src_to_dep=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(
 # $3 = short display-form of the arguments -- frequently just the target file name
 #
 ifneq (0,$(V))
- ms.call_tool=$(1) $(2)
+ ms.CALL_TOOL=$(1) $(2)
 else
- ms.call_tool=@printf "%-17s %s\n" $(notdir $(1)) $(3) && $(1) $(2)
+ ms.CALL_TOOL=@printf "%-17s %s\n" $(notdir $(1)) $(3) && $(1) $(2)
 endif
 
 #
-# call the symbol stripping tool either with full echoing (verbose is on)
-# or silently (verbose is off).  This function strips to a ".strip" file
+# call the symbol stripping tool either with full echoing (when verbose is on)
+# or silently (when verbose is off).  This function strips to a ".strip" file
 # and then replaces the original with the .strip file.
 #
 # $1 = (fully path-qualified, if necessary) name of strip tool
 # $2 = name of file to be stripped
 #
 ifeq (release,$(CONFIG))
- ms.do_strip = $(call ms.call_tool,$(1),-o $(2).strip $(2),$(2)) && rm $(2) && mv $(2).strip $(2)
+ ms.do_strip = $(call ms.CALL_TOOL,$(1),-o $(2).strip $(2),$(2)) && rm $(2) && mv $(2).strip $(2)
 endif
 
 #
@@ -211,7 +235,7 @@ CFLAGS_emcc_debug+=-DNDEBUG
 
 #
 # compiler and linker flags that are used in release emcc
-# TODO: check on closure 1
+# TODO: check on --closure 1
 #
 CFLAGS_emcc_release+=-s FORCE_ALIGNED_MEMORY=1 -O2 -s DOUBLE_MODE=0 -s DISABLE_EXCEPTION_CATCHING=0 --llvm-lto 1
 LDFLAGS_emcc_release+=-s FORCE_ALIGNED_MEMORY=1 -O2 -s DOUBLE_MODE=0 -s DISABLE_EXCEPTION_CATCHING=0 --llvm-lto 1 --closure 0
@@ -219,6 +243,9 @@ LDFLAGS_emcc_release+=-s FORCE_ALIGNED_MEMORY=1 -O2 -s DOUBLE_MODE=0 -s DISABLE_
 CFLAGS_emcc_debug+=-s ASSERTIONS=1
 LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 
+#
+# the projects we are interested produce smaller files if memory-init-file is turned on
+#
 CFLAGS_emcc+=--memory-init-file 1
 LDFLAGS_emcc+=--memory-init-file 1
 
@@ -306,10 +333,10 @@ display_opts:
 #
 define ms.c_compile_rule
 $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_pnacl.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.call_tool,$(ms.pnacl_cc),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) $(2) $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.pnacl_cc),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) $(2) $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
 $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.call_tool,$(ms.em_cc),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js)d $(2) $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.em_cc),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js)d $(2) $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
 	$(ms.sed) '1 c\'$$$$'\n''$(call ms.src_to_obj,$(1),_js): \\'$$$$'\n' $(call ms.src_to_dep,$(1),_js)d > $(call ms.src_to_dep,$(1),_js)
 	@rm $(call ms.src_to_dep,$(1),_js)d
 
@@ -317,10 +344,10 @@ endef
 
 define ms.cxx_compile_rule
 $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_pnacl.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.call_tool,$(ms.pnacl_cxx),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) $(2) -std=gnu++11 $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.pnacl_cxx),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) $(2) -std=gnu++11 $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
 $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.call_tool,$(ms.em_cxx),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js)d $(2) -std=c++0x $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.em_cxx),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js)d $(2) -std=c++0x $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
 	$(ms.sed) '1 c\'$$$$'\n''$(call ms.src_to_obj,$(1),_js): \\'$$$$'\n' $(call ms.src_to_dep,$(1),_js)d > $(call ms.src_to_dep,$(1),_js)
 	@rm $(call ms.src_to_dep,$(1),_js)d
 
@@ -352,7 +379,8 @@ endef
 
 #
 # at least currently, pnacl is easier to debug if we build a native nexe instead of a portable pexe
-# ms.DO_NEXE can be set to force this to happen
+# ms.DO_NEXE can be set to force this to happen, but by default we don't do this.
+#
 ms.DO_NEXE?=0
 
 #
@@ -374,21 +402,21 @@ ifneq (0,$(ms.DO_NEXE))
 define ms.NACL_LINKER_RULE
 $(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl))
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
-	$(call ms.call_tool,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
+	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
 	$(ms.mkdir) -p $$(@D)
-	$(call ms.call_tool,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp $(foreach lib,$(3),-l$(lib)),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc)
-	$(call ms.call_tool,$(ms.pnacl_translate), --allow-llvm-bitcode-input -arch i686 $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -o $$@, $$@)
+	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp $(foreach lib,$(3),-l$(lib)),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc)
+	$(call ms.CALL_TOOL,$(ms.pnacl_translate), --allow-llvm-bitcode-input -arch i686 $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -o $$@, $$@)
 
 endef
 else
 define ms.NACL_LINKER_RULE
 $(ms.OUT_DIR)/$(CONFIG)/$(1).pexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl))
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
-	$(call ms.call_tool,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
+	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
 	$(ms.mkdir) -p $$(@D)
-	$(call ms.call_tool,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $$@ -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp $(foreach lib,$(3),-l$(lib)),$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe)
+	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $$@ -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp $(foreach lib,$(3),-l$(lib)),$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe)
 	$(call ms.do_strip,$(ms.pnacl_strip),$$@)
-	$(call ms.call_tool,$(ms.pnacl_finalize),$$@,$$@)
+	$(call ms.CALL_TOOL,$(ms.pnacl_finalize),$$@,$$@)
 
 endef
 endif
@@ -402,18 +430,19 @@ endif
 define ms.EM_LINKER_RULE
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js))
 	$(ms.mkdir) -p $$(@D)
-	$(call ms.call_tool,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
+	$(call ms.CALL_TOOL,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
 
 #
 # bug in gnumake???
-# the rule to build the .js prerequisite also builds the .mem (this target)
-# so we shouldn't really need any recipe here, and just an empty recipe does
-# cause something like "make <mycomponent>.js.mem" _does_ cause it to build the
-# file (by executing the recipe above for producing the .js).  But for some
-# reason I can't figure out, later recipies in targets that have this .js.mem
-# as a dependency don't run if the full list of targets also includes the .js
-# file, and if this recipe is empty.  So we just execute a practically-do-nothing
-# "touch" here as the recipe.  This is enough to get the later recipes to run
+# the rule to build the .js prerequisite also builds the .js.mem (this target)
+# so we shouldn't really need any recipe here, and just an empty recipe _does_
+# cause something like "make <mycomponent>.js.mem" it to build the file (by
+# executing the recipe above for producing the .js).  But for some reason I can't
+# figure out, later recipies in targets that have this .js.mem as a dependency
+# don't run if the full list of targets also includes the .js file, and if this
+# recipe is empty.  So we just execute a practically-do-nothing "touch" here as
+# the recipe.  This is enough to get the later recipes to run.  This "touch" is
+# _not_ about creating the file.
 # ???
 #
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js.mem: $(ms.OUT_DIR)/$(CONFIG)/$(1).js
@@ -434,4 +463,4 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).js\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js.mem
 
 %.nmf: $(basename $(notdir %)).$(ms.nacl_ext)
-	$(call ms.call_tool,python,$(ms.this_make_dir)nacl_sdk_root/tools/create_nmf.py -o $@ $^ -s $(@D),$@)
+	$(call ms.CALL_TOOL,python,$(ms.this_make_dir)nacl_sdk_root/tools/create_nmf.py -o $@ $^ -s $(@D),$@)
