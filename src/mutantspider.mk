@@ -244,10 +244,15 @@ CFLAGS_emcc_debug+=-s ASSERTIONS=1
 LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 
 #
+#
+#
+ms.EM_EPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_main'
+
+#
 # the projects we are interested produce smaller files if memory-init-file is turned on
 #
 CFLAGS_emcc+=--memory-init-file 1
-LDFLAGS_emcc+=--memory-init-file 1
+LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js
 
 #
 # This filesystem implementation will hopefully, eventually get merged into emscripten
@@ -255,6 +260,15 @@ LDFLAGS_emcc+=--memory-init-file 1
 #
 LDFLAGS_emcc+=--js-library $(ms.this_make_dir)library_pbmemfs.js
 
+#
+#
+SOURCES+=\
+$(ms.this_make_dir)mutantspider.cpp\
+$(ms.this_make_dir)mutantspider_fs.cpp
+
+#
+#
+INC_DIRS+=$(ms.this_make_dir)
 
 
 ifneq (clean,$(MAKECMDGOALS))

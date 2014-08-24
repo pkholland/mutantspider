@@ -68,7 +68,7 @@ about something depending on what conditing it is dealing with.
 Here are the REQUIREMENTS that mutantspider.mk checks for and stops if they are missing:
 ########################################################################################
 
-1)	The directory containing mutantspider.mk must have also have a directory named nacl_sdk_root.  This must either be
+1)	The directory containing mutantspider.mk must also have a directory named "nacl_sdk_root".  This must either be
 	the root directory of whatever Pepper sdk (from Google's Native Client sdk) you want to use, or more realisticaly
 	a symlink to that directory.  This means you need to have an appropriate NaCl sdk installed on your machine
 	somewhere.
@@ -86,7 +86,7 @@ Here are the things it will WARN about, but then make default decisions:
 	in the current directory.  The Makefile above did not define this, so would have produced this warning, and it
 	is also why the various myApp.* files are in the "out" directory.
 	
-There are also a few things that you can optionally set, which have good-enough defaults that if you don't set them
+There are also a few things that you can optionally set, but which have good-enough defaults that if you don't set them
 MMS just uses its default.  These are:
 ######################################
 
@@ -108,6 +108,9 @@ tracks compiler and linker option changes.  If you change the compiler options y
 everything.
 
 Supports multiple source files with the same name (for example, "utils.c"), as long as they are in different directories.
+
+Supports fully dependent makefiles so that parallel make works correctly.  Executing make like "make -j8" will
+cause it to compile 8 files in parallel (speeding up build times if you have an 8 core machine).
 
 Automatically provides reasonable compiler options for both "release" and "debug" builds for all of the compilers it
 supports.
