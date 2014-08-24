@@ -1,10 +1,10 @@
 Mutantspider Makefile System
 
-The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be used by
-including it in some other makefile, and then following a set of guidelines on how to write other makefiles that are using it.
-It is primarily intended to support a project that constucts a web application, in part by cross-compiling C/C++ code into
-the various formats that are supported by modern web browsers -- for example asm.js and Google's Native Client.  In this
-system executing 'make' produces multiple executables all from the same source files.
+The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be used
+by including it in some other makefile, and then following a set of guidelines on how to write other makefiles that are
+using it.  It is primarily intended to support a project that constucts a web application, in part by cross-compiling
+C/C++ code into the various formats that are supported by modern web browsers -- for example asm.js and Google's Native
+Client.  In this system executing 'make' produces multiple executables all from the same source files.
 
 Currently (2014/2/26) the Mutantspider Makefile System supports Emscripten (->asm.js) and NaCl "pnacl" (->.pexe).
 
@@ -61,9 +61,9 @@ directory named 'release', and in there you would get a set of myApp* files for 
 Currently this set would be myApp.js, myApp.js.mem, myApp.pexe, and myApp.nmf.
 
 If you actually run the experiment above you are likely to see several errors and warnings when you try to execute make.
-mutantspider.mk requires and checks for certain things on your system.  If it finds something wrong with the configuration
-it will tell you what is wrong and either stop, or just warn you that it is making a default decision about something
-depending on what conditing it is dealing with.
+mutantspider.mk requires and checks for certain things on your system.  If it finds something wrong with the
+configuration it will tell you what is wrong and either stop, or just warn you that it is making a default decision
+about something depending on what conditing it is dealing with.
 
 Here are the REQUIREMENTS that mutantspider.mk checks for and stops if they are missing:
 ########################################################################################
@@ -104,23 +104,25 @@ A few cool things that MMS does:
 
 Dependency Tracking.  While not absolutely perfect in every possible situation, makefiles built with MMS will generally
 only compile what needs to be compiled each time.  In addition to automatically tracking header file dependencies it also
-tracks compiler and linker option changes.  If you change the compiler options you are using it will recompile everything.
+tracks compiler and linker option changes.  If you change the compiler options you are using it will recompile
+everything.
 
 Supports multiple source files with the same name (for example, "utils.c"), as long as they are in different directories.
 
 Automatically provides reasonable compiler options for both "release" and "debug" builds for all of the compilers it
 supports.
 
-Makes it easy for you to define configurations other than just "release" and "debug".  In fact, it has a generic mechanism
-for dealing with configurations, and uses this mechanism internally to define the settings for "debug" and "release".
+Makes it easy for you to define configurations other than just "release" and "debug".  In fact, it has a generic
+mechanism for dealing with configurations, and uses this mechanism internally to define the settings for "debug" and
+"release".
 
 
 Defining (or customizing) configurations:
 ##########################################
 
 Any single invocation of make in MMS uses a single "configuration".  This is simply the value of the CONFIG variable for
-that invocation of make.  If not specified CONFIG will default to "release".  The value of the CONFIG variable affects the
-build in the following ways:
+that invocation of make.  If not specified CONFIG will default to "release".  The value of the CONFIG variable affects
+the build in the following ways:
 
 1)	Intermediate and final output files are placed in directory named $(CONFIG) -- within the $(ms.INTERMEDIATE_DIR) or
 	$(ms.OUT_DIR) directories.
@@ -140,9 +142,9 @@ build in the following ways:
 	where <linker> is the linker being used for that build (currently either "pnacl" or "emcc")
 	
 MMS provides reasonable defaults for the "release" and "debug" configurations by defining an appropriate set of these
-CFLAGS_* and LDFLAGS_* variables so that the generic configuration mechanism ends up using approrpriate options for these
-two configurations.  Its internal mechanism to specify these is done with "+=" syntax.  So, for example, it contains
-statements that look like:
+CFLAGS_* and LDFLAGS_* variables so that the generic configuration mechanism ends up using approrpriate options for
+these two configurations.  Its internal mechanism to specify these is done with "+=" syntax.  So, for example, it
+contains statements that look like:
 
 # add "-O2" to whatever else is in CFLAGS_release
 CFLAGS_release += -O2
@@ -156,17 +158,17 @@ Creating "component-like" Makefiles
 
 MMS is oriented towards a build system where all source files are compiled into a single executable.  It does not have
 formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide tools to
-automatically build them and link them together.  This is mostly because some of the compilers in the set that it supports
-do not have good mechanisms for these sorts of objects.
+automatically build them and link them together.  This is mostly because some of the compilers in the set that it
+supports do not have good mechanisms for these sorts of objects.
 
-The idea instead is that logical groups of source files would have a dedicated <component>.mk and that the primary Makefile
-would be expected to include that file the same way it includes mutantspider.mk.
+The idea instead is that logical groups of source files would have a dedicated <component>.mk and that the primary
+Makefile would be expected to include that file the same way it includes mutantspider.mk.
 
 Here are some guidelines to attempt to follow when writing such a makefile:
 
-1)	APPEND your sources to the $(SOURCES) variable.  This allows the primary Makefile to end up with a single $(SOURCES)
-	variable that contains the union of all component sources.  While there is nothing special about the name "SOURCES"
-	it is just a good default name for everyone to use.  For example:
+1)	APPEND your sources to the $(SOURCES) variable.  This allows the primary Makefile to end up with a single
+	$(SOURCES) variable that contains the union of all component sources.  While there is nothing special about the
+	name "SOURCES" it is just a good default name for everyone to use.  For example:
 	
 	SOURCES+=\
 	mySource1.cpp\
@@ -180,11 +182,11 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 	myDirectory1\
 	myDirectory2
 
-3)	Use relative path's to all of your sources and include dir's and specify it so that they are relative to the original
-	make directory $(CURDIR) -- not simply relative to the directory of your makefile.  This will require a small bit of
-	make-style computing to determine depending on the directory layout you are using for your component.  In a simple case
-	where all of your files are in known locations that are subdirectories of where your makefile is, you can do this by
-	simply computing the directory of your makefile.
+3)	Use relative path's to all of your sources and include dir's and specify it so that they are relative to the
+	original make directory $(CURDIR) -- not simply relative to the directory of your makefile.  This will require a
+	small bit of make-style computing to determine depending on the directory layout you are using for your component.
+	In a simple case where all of your files are in known locations that are subdirectories of where your makefile is,
+	you can do this by simply computing the directory of your makefile.
 	
 	Consider the following layout:
 	
@@ -195,9 +197,9 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 			source2.cpp
 			source2.h
 			
-	where indentation represents directory structure.  If source1.cpp #includes source2.h then it is likely that sub_dir
-	will need to be included in INC_DIRS.  Both source1.cpp and source2.cpp need to be included in SOURCES.  The following
-	make syntax will let you do this:
+	where indentation represents directory structure.  If source1.cpp #includes source2.h then it is likely that
+	sub_dir will need to be included in INC_DIRS.  Both source1.cpp and source2.cpp need to be included in SOURCES.
+	The following make syntax will let you do this:
 	
 	##############################
 	#
@@ -220,8 +222,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 	
 	###############################
 	
-	Things get a little more complicated when the root of your directory is higher up than where your component.mk file
-	lives. But this is also not too bad.
+	Things get a little more complicated when the root of your directory is higher up than where your component.mk
+	file lives. But this is also not too bad.
 	
 	Consider the following layout:
 	
@@ -237,10 +239,10 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 			
 	In this case we want to figure out the directory that is one up from where we found it in the first example.  And
 	while this can be done by just appending '../' to the end of what we found, that ends up being a little messy in
-	certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced.  For example
-	dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will end up
-	placing these in different directories unnecessarily if we don't simplify the representations of these directories.
-	Here is a bit of make magic to clean these things up.
+	certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced.  For
+	example dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will end
+	up placing these in different directories unnecessarily if we don't simplify the representations of these
+	directories.  Here is a bit of make magic to clean these things up.
 	
 	##############################
 	#
@@ -282,8 +284,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 	
 4)	If your component has special compile configurations that you use for certain, perhaps debugging, purposes you can
 	easily add a configuration to the whole build system by just defining the compiler and linker options you need for
-	that configuration.  For example, supposed your component has a set of additional defines that you want to use when
-	compiling, you can just put this in your component.mk file:
+	that configuration.  For example, supposed your component has a set of additional defines that you want to use
+	when compiling, you can just put this in your component.mk file:
 	
 	#
 	# add configuration "eng" by describing its cflags
