@@ -124,8 +124,8 @@ Any single invocation of make in MMS uses a single "configuration".  This is sim
 that invocation of make.  If not specified CONFIG will default to "release".  The value of the CONFIG variable affects
 the build in the following ways:
 
-1)	Intermediate and final output files are placed in directory named $(CONFIG) -- within the $(ms.INTERMEDIATE_DIR) or
-	$(ms.OUT_DIR) directories.
+1)	Intermediate and final output files are placed in directory named $(CONFIG) -- within the $(ms.INTERMEDIATE_DIR)
+	or $(ms.OUT_DIR) directories.
 	
 2)	Compiles are done using the compiler flags defined in the following variables:
 
