@@ -66,7 +66,7 @@ it will tell you what is wrong and either stop, or just warn you that it is maki
 depending on what conditing it is dealing with.
 
 Here are the REQUIREMENTS that mutantspider.mk checks for and stops if they are missing:
-#####################################################################################
+########################################################################################
 
 1)	The directory containing mutantspider.mk must have also have a directory named nacl_sdk_root.  This must either be
 	the root directory of whatever Pepper sdk (from Google's Native Client sdk) you want to use, or more realisticaly
@@ -112,7 +112,7 @@ Automatically provides reasonable compiler options for both "release" and "debug
 supports.
 
 Makes it easy for you to define configurations other than just "release" and "debug".  In fact, it has a generic mechanism
-for dealing with configurations, and uses this mechanism internally to define the behavior for "debug" and "release".
+for dealing with configurations, and uses this mechanism internally to define the settings for "debug" and "release".
 
 
 Defining (or customizing) configurations:
@@ -237,8 +237,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 			
 	In this case we want to figure out the directory that is one up from where we found it in the first example.  And
 	while this can be done by just appending '../' to the end of what we found, that ends up being a little messy in
-	certain parts of MMS if there are multiple ways to specify single directory that ends up being referenced.  For example
-	dir1/dir2 is the same directory as dir1/dir2/dir3/../  But some of the object file handling in MMS will end up
+	certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced.  For example
+	dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will end up
 	placing these in different directories unnecessarily if we don't simplify the representations of these directories.
 	Here is a bit of make magic to clean these things up.
 	
@@ -269,7 +269,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 	#
 	COMPONENT2_DIR := $(call parent_dir,$(call parent_dir,$(lastword $(MAKEFILE_LIST))))
 	
-	# now these are easy
+	# now these are easy, and unlike the component1 example, parent_dir does _not_
+	# leave the trailing '/', so we add it after each $(COMPONENT2_DIR)
 	SOURCES+=\
 	$(COMPONENT2_DIR)/source/source1.cpp\
 	$(COMPONENT2_DIR)/source/source2.cpp
@@ -302,7 +303,7 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 	CONFIG=eng
 	endif
 
-	# make the "eng" target and force it to build the 'all' targets -- MMS recommends that the default target
+	# make the "eng" target and force it to build the 'all' target -- MMS recommends that the default target
 	# is 'all' so putting it as a prerequisite of 'eng' causes the 'eng' target to build the 'all' target
 	# (with CONFIG=eng).
 	.PHONY: eng
@@ -342,7 +343,7 @@ While you could solve this problem by adding #ifndef (EMSCRIPTEN) blocks inside 
 want to modify these sources at all.  When computing the list of files to compile with a particular file, MMS always
 excludes any file that is listed in the <compiler>_EXCLUDE variable.  So for example:
 
-emcc_EXCLUDE:=$(COMPONENT2_DIR)/source/source1.cpp
+emcc_EXCLUDE+=$(COMPONENT2_DIR)/source/source1.cpp
 
 will cause source1.cpp to be skipped when building with emcc (but not skipped when building with pnacl).
 
@@ -350,7 +351,7 @@ will cause source1.cpp to be skipped when building with emcc (but not skipped wh
 2.  Google's Pepper sdk comes with both debug and release builds of their ppapi and ppapi_cpp libraries.  If you know
 the difference between these two and want to specify which of the two are used for your build you can do this by setting
 the ms.NACL_LIB_PATH to either Debug or Release (be careful to use these exact names, including the captitalization).
-If not specified MMS, will use Debug for CONFIG=debug, and Release for anything else.
+If not specified, MMS will use Debug for CONFIG=debug, and Release for anything else.
 
 
 3.  If your project includes javascript files and you would like to run the closure compiler that comes with your

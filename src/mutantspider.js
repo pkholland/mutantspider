@@ -16,9 +16,9 @@ var Module;
 		using_web_gl = using;
 	}
 	
-	// messages sent from the C/C++ component arrive here.
+	// messages posted from the C/C++ component arrive here.
 	// if the given message is a string and starts with '#' then it is some kind of
-	// internal command-like message and we deal with that separately.  If not, it is
+	// internal command-like message and we deal with that internally.  If not, it is
 	// a general, probably debugging, message that we forward to the app's message handler.
 	var main_on_status;
 	function post_js_message(msg)
@@ -62,7 +62,8 @@ var Module;
 	}
 	
 	// support code for the case where the component is running asm.js
-	// (instead of nacl/pnacl)
+	// (instead of nacl/pnacl).  This primarily allows the emscripten-compiled
+	// code to write to a pepper-inspired API.
 	var asm = (function() {
 	
 		var MS_FLAGS_WEBGL_SUPPORT = 1;
@@ -361,7 +362,7 @@ var Module;
 		// we would otherwise pass to this function, we store them in
 		// closure-local variables and then call this through the 'initialize'
 		// function below (which takes no parameters, so is easy to call from C).
-		function js_initialize(element, do_drag_drop)
+		function js_initialize(element)
 		{
 			var width = element.clientWidth;
 			var height = element.clientHeight;
@@ -381,12 +382,6 @@ var Module;
 			element.onkeydown = jsKeyDown;
 			element.onkeypress = jsKeyPress;
 			element.onkeyup = jsKeyUp;
-			
-			if (do_drag_drop)
-			{
-				element.ondrop = jsDrop;
-				element.ondragover = jsDragOver;
-			}
 			
 			element.ontouchstart = jsTouchStart;
 			element.ontouchend = jsTouchEnd;
@@ -475,7 +470,7 @@ var Module;
 			// call into the asm.js module's init function
 			init_proc( init_flags );
 			
-			// tell the asm.ms module about the current size of it
+			// tell the asm.js module about the current size of its element
 			change_view_proc(0,0,width,height);
 			
 			// We're being called (indirectly) by the asm.js module's 'main' function.
@@ -486,9 +481,9 @@ var Module;
 		
 		// called to deal with variables we need in js_initialize, but can't
 		// be easily passed through the C/C++ asm.js layer.
-		function set_initialize(element, do_drag_drop)
+		function set_initialize(element)
 		{
-			this.initialize = function() { js_initialize(element, do_drag_drop); }
+			this.initialize = function() { js_initialize(element); }
 		}
 		
 		// The support code called by the asm.js...
@@ -602,8 +597,8 @@ var Module;
 			id				value previously returned from new_http_request
 			method			address (offset) of 'GET', 'POST', etc... c-string in Module.HEAP
 			urlAddr			address (offset) of the url c-string to be used in Module.HEAP
-			callbackAddr	function address (index-like thing) of the callback function that will be passed as the first parameter to Module.MS_HttpCallbackProc
-			user_data		address (offset) of user_data that will be passed as the second parameter to Module.MS_HttpCallbackProc
+			callbackAddr	function address (index-like thing) of the callback function that will be passed as the first parameter to Module.MS_DoCallbackProc
+			user_data		address (offset) of user_data that will be passed as the second parameter to Module.MS_DoCallbackProc
 			
 			TODO: Get error handling (for example, 404 returns, etc...) lined up with nacl's behavior
 		*/
@@ -659,15 +654,15 @@ var Module;
 			return 0;
 		}
 		
-		// only valid to call _after_ 'open_http_request' has called its given callbackAddr with MS_OK
+		// only valid to call _after_ 'open_http_request' has called its given callbackAddr with MS_OK.
 		// returns the total download size of the file.
 		function get_http_download_size(id)
 		{
 			return httpRequests[id].c_buffer.byteLength;
 		}
 		
-		// only valid to call _after_ 'open_http_request' has called its given callbackAddr with MS_OK
-		// copy 'len' bytes bytes from the download assocaited with 'id' into 'buffer'.  Can be called
+		// only valid to call _after_ 'open_http_request' has called its given callbackAddr with MS_OK.
+		// copy 'len' bytes from the download assocaited with 'id' into 'buffer'.  Can be called
 		// in a streaming fashion.  In the initial state a virtual 'file position' is set to 0, and
 		// on each call the first byte transfered to buffer[0] will be the byte at this 'file position'.
 		// For each call it returns the number of bytes actually copied and updates this 'file position'
@@ -727,7 +722,7 @@ var Module;
 			setTimeout( function() { do_callback(callbackAddr, user_data, result); }, milli );
 		}
 		
-		// call the caller-supplied on_status with the given 'message' - simple debugging
+		// call the caller-supplied on_status with the given 'message' - internal commands and simple debugging
 		function post_string_message(msgAddr)
 		{
 			mutantspider.post_js_message(Module.Pointer_stringify(msgAddr));
@@ -842,10 +837,6 @@ var Module;
 							asm_memory:		number of bytes to allocate to the asm.js heap.  This is only used
 											in the asm.js case -- not the nacl/pnacl case.  This number should
 											be a multiple of 4M.
-							do_drag_drop:	boolean value.  If true drag-and-drop will be connected so that
-											files dragged and dropped from the local file system will result
-											in {cmd: 'open', url:<local url>} dictionaries being sent to the
-											component.
 					
 		on_status[in]	function object that will be called to report various aspects of what is happening
 						to the component.  on_status will always be called with a dictionary, and that dictionary
@@ -898,17 +889,6 @@ var Module;
 		{
 			using_web_gl = true;
 			on_status({status: 'loading', exe_type: 'PNaCl'});
-
-			// the function that gets called when the pnacl module is ready to run
-			element.addEventListener('load', function()
-											{
-												if (params.do_drag_drop)
-												{
-													element.ondrop = jsDrop;
-													element.ondragover = jsDragOver;
-												}
-											},
-										true);
 	
 			element.addEventListener('message', function(event){console.log('heard message: ' + event); post_js_message(event.data);}, true);
 			element.addEventListener('error',   function(event){on_status({status: 'error',   message: event});}, true);
@@ -919,7 +899,7 @@ var Module;
 			nacl_moduleEl.setAttribute('type', 'application/x-pnacl');
 			nacl_moduleEl.setAttribute('style', 'background-color:#808080;width:100%;height:100%');
 			nacl_moduleEl.setAttribute('locale', navigator.language );
-			nacl_moduleEl.setAttribute('local_storage', 0);	// assume failure
+			nacl_moduleEl.setAttribute('local_storage', 0);
 	
 			if (params.local_storage)
 			{

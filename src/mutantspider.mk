@@ -169,7 +169,7 @@ ms.em_link := emcc
 #
 # Strategy for only calling mkdir on output directories once.
 # We put a file named "dir.stamp" in each of those directories
-# and then put a "order only" prerequesite to this file in the
+# and then put an "order only" prerequesite to this file in the
 # list of each file to compile.
 #
 %dir.stamp :
@@ -249,6 +249,12 @@ LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 CFLAGS_emcc+=--memory-init-file 1
 LDFLAGS_emcc+=--memory-init-file 1
 
+#
+# This filesystem implementation will hopefully, eventually get merged into emscripten
+# itself.  For now we use our own copy, and so add this to the link
+#
+LDFLAGS_emcc+=--js-library $(ms.this_make_dir)library_pbmemfs.js
+
 
 
 ifneq (clean,$(MAKECMDGOALS))
@@ -310,7 +316,7 @@ endif
 endif
 
 #
-# helper target to see what the compile options are set to
+# helper target to see what the compiles and options are set to
 #
 .PHONY: display_opts
 display_opts:
@@ -434,7 +440,7 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.op
 
 #
 # bug in gnumake???
-# the rule to build the .js prerequisite also builds the .js.mem (this target)
+# the rule to build the .js target also builds the .js.mem (this target)
 # so we shouldn't really need any recipe here, and just an empty recipe _does_
 # cause something like "make <mycomponent>.js.mem" it to build the file (by
 # executing the recipe above for producing the .js).  But for some reason I can't
@@ -456,6 +462,13 @@ else
  ms.nacl_ext=pexe
 endif
 
+#
+#	$1 the name of the web application you will be building
+#
+# The list of "interesting" files that this will produce.  This set of files
+# will frequently be the ones you will want to move to some kind of "deploy"
+# directory as part of building an entire web page that uses these components.
+#
 ms.TARGET_LIST=\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).$(ms.nacl_ext)\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).nmf\
