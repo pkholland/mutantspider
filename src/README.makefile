@@ -78,13 +78,13 @@ Here are the REQUIREMENTS that mutantspider.mk checks for and stops if they are 
 Here are the things it will WARN about, but then make default decisions:
 ########################################################################
 
-1)	If your Makefile does not define ms.INTERMEDIATE_DIR prior to including mutantspider.mk it will assume and use "obj"
-	in the current directory.  Since the example above did not define this, you would see this warning if you used this
-	Makefile
+1)	If your Makefile does not define ms.INTERMEDIATE_DIR prior to including mutantspider.mk it will assume and use
+	"obj" in the current directory.  Since the example above did not define this, you would see this warning if you
+	used this Makefile
 	
 2)	If your Makefile does not define ms.OUT_DIR prior to including mutantspider.mk it will assume and use "out"
-	in the current directory.  The Makefile above did not define this, so would have produced this warning, and it is
-	also why the various myApp.* files are in the "out" directory.
+	in the current directory.  The Makefile above did not define this, so would have produced this warning, and it
+	is also why the various myApp.* files are in the "out" directory.
 	
 There are also a few things that you can optionally set, which have good-enough defaults that if you don't set them
 MMS just uses its default.  These are:
