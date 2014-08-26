@@ -249,15 +249,16 @@ CFLAGS_emcc_debug+=-s ASSERTIONS=1
 LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 
 #
+# If your build needs some additional symbols exported in the emcc build, you can add them by defining them
+# in ms.EM_EXPORTS
 #
-#
-ms.EM_EPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_main'
+ms.EM_EXPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_main'
 
 #
-# the projects we are interested produce smaller files if memory-init-file is turned on
+# the projects we are interested produce smaller files if memory-init-file is turned on.  We also add some standard asm.js library stuff
 #
 CFLAGS_emcc+=--memory-init-file 1
-LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js
+LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EXPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js
 
 #
 # This filesystem implementation will hopefully, eventually get merged into emscripten
@@ -266,12 +267,14 @@ LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EPORTS)]" --j
 LDFLAGS_emcc+=--js-library $(ms.this_make_dir)library_pbmemfs.js
 
 #
+# a few files that implement some (mostly emscripten) support code
 #
 SOURCES+=\
 $(ms.this_make_dir)mutantspider.cpp\
 $(ms.this_make_dir)mutantspider_fs.cpp
 
 #
+# everyone will need to #include "mutantspider.h"
 #
 INC_DIRS+=$(ms.this_make_dir)
 
@@ -335,7 +338,7 @@ endif
 endif
 
 #
-# helper target to see what the compiles and options are set to
+# helper target to see what the compilers and options are set to
 #
 .PHONY: display_opts
 display_opts:
