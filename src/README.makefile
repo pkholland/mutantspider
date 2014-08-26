@@ -1,10 +1,10 @@
 Mutantspider Makefile System
 
 The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be used
-by including it in some other makefile, and then following a set of guidelines on how to write other makefiles that are
-using it.  It is primarily intended to support a project that constucts a web application, in part by cross-compiling
-C/C++ code into the various formats that are supported by modern web browsers -- for example asm.js and Google's Native
-Client.  In this system executing 'make' produces multiple executables all from the same source files.
+by including it in some other makefile, and then following a set of guidelines on how to write those other makefiles that
+are using it.  It is also primarily intended to support a project that constucts a web application, in part by
+cross-compiling C/C++ code into the various formats that are supported by modern web browsers -- for example asm.js and
+Google's Native Client.  In this system, executing 'make' produces multiple executables all from the same source files.
 
 Currently (2014/2/26) the Mutantspider Makefile System supports Emscripten (->asm.js) and NaCl "pnacl" (->.pexe).
 
@@ -22,8 +22,7 @@ SOURCES:=  { some list of C/C++ source files you want to compile into your web p
 INC_DIRS:= { the include paths needed (if any) to compile the sources in SOURCES }
 
 # this defines a set of functions we will use below.
-# it is recommended to put include mutantspider.mk AFTER we have specified all of our
-# SOURCES, compile options, etc...
+# it is recommended to put "include mutantspider.mk" AFTER we have specified all of our SOURCES, compile options, etc...
 include mutantspider.mk
 
 #
@@ -61,7 +60,7 @@ directory named 'release', and in there you would get a set of myApp* files for 
 Currently this set would be myApp.js, myApp.js.mem, myApp.pexe, and myApp.nmf.
 
 If you actually run the experiment above you are likely to see several errors and warnings when you try to execute make.
-mutantspider.mk requires and checks for certain things on your system.  If it finds something wrong with the
+mutantspider.mk requires, and checks for, certain things on your system.  If it finds something wrong with the
 configuration it will tell you what is wrong and either stop, or just warn you that it is making a default decision
 about something depending on what condition it is dealing with.
 
@@ -328,7 +327,7 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     
     CFLAGS_<compiler-name>_<source-file-name>
     
-    in the options that are passed to the compile when compiling that file in that compiler.  To modify the component2
+    in the options that are passed to the compiler when compiling that file in that compiler.  To modify the component2
     makefile above in 3, so that it added -msse4.2 to the compile options only for source2.cpp, when compiled for
     pnacl, the makefile could contain a statement such as:
     
@@ -353,10 +352,10 @@ then C/C++ code will be able to execute:
 	FILE* f = fopen("/resources/startup.config", "r");
 	
 to open and read the contents of that file.  Currently, all such files will appear flat within the "/resources"
-directory, and so will need to have unique names.  This directory is also mounted as read-only, and so it will fail if
-you attempt to add files to it or modify any of the existing files.  Files within the "/resources" directory must be
-opened read-only ("r", if you are using fopen).  The dependency mechanism of MMS will correctly re-include the
-startup.config file if you edit it and then execute make again.
+directory (no subdirectories), and so will need to have unique names for each file.  This directory is also mounted
+read-only, and so it will fail if you attempt to add files to it or modify any of the existing files.  Files within the
+"/resources" directory must be opened read-only ("r", if you are using fopen).  The dependency mechanism of MMS will
+correctly re-include the startup.config file if you edit it and then execute make again.
 
 
 A few more cool things you can do with MMS:
