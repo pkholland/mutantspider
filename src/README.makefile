@@ -1,14 +1,16 @@
 Mutantspider Makefile System
 
-The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be used
-by including it in some other makefile, and then following a set of guidelines on how to write those other makefiles that
-are using it.  It is also primarily intended to support a project that constucts a web application, in part by
-cross-compiling C/C++ code into the various formats that are supported by modern web browsers -- for example asm.js and
-Google's Native Client.  In this system, executing 'make' produces multiple executables all from the same source files.
+The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be
+used by including it in some other makefile, and then following a set of guidelines on how to write those other
+makefiles that are using it.  It is also primarily intended to support a project that constucts a web application, in
+part by cross-compiling C/C++ code into the various formats that are supported by modern web browsers -- for example
+asm.js and Google's Native Client.  In this system, executing 'make' produces multiple executables all from the same
+source files.
 
 Currently (2014/2/26) the Mutantspider Makefile System supports Emscripten (->asm.js) and NaCl "pnacl" (->.pexe).
 
-The most simplistic usage of MMS would be a Makefile that lived in the same directory as mutantspider.mk and looked like:
+The most simplistic usage of MMS would be a Makefile that lived in the same directory as mutantspider.mk and looked
+like:
 
 #########################
 
@@ -22,7 +24,8 @@ SOURCES:=  { some list of C/C++ source files you want to compile into your web p
 INC_DIRS:= { the include paths needed (if any) to compile the sources in SOURCES }
 
 # this defines a set of functions we will use below.
-# it is recommended to put "include mutantspider.mk" AFTER we have specified all of our SOURCES, compile options, etc...
+# it is recommended to put "include mutantspider.mk" AFTER we have specified all of our SOURCES, compile options,
+# etc...
 include mutantspider.mk
 
 #
@@ -53,14 +56,14 @@ all: $(call ms.TARGET_LIST,$(BUILD_NAME))
 ###########################
 
 
-With just this much, were you to cd to the directory containing this Makefile (and mutantspider.mk, because this example
-has the two files in the same directory) and then type 'make' -- and assuming that your SOURCES all compiled correctly
-in all of the compilers -- you would get a directory named 'out' in this same directory, and in there you would have a
-directory named 'release', and in there you would get a set of myApp* files for each of the compilers that MMS supports.
-Currently this set would be myApp.js, myApp.js.mem, myApp.pexe, and myApp.nmf.
+With just this much, were you to cd to the directory containing this Makefile (and mutantspider.mk, because this
+example has the two files in the same directory) and then type 'make' -- and assuming that your SOURCES all compiled
+correctly in all of the compilers -- you would get a directory named 'out' in this same directory, and in there you
+would have a directory named 'release', and in there you would get a set of myApp* files for each of the compilers
+that MMS supports. Currently this set would be myApp.js, myApp.js.mem, myApp.pexe, and myApp.nmf.
 
-If you actually run the experiment above you are likely to see several errors and warnings when you try to execute make.
-mutantspider.mk requires, and checks for, certain things on your system.  If it finds something wrong with the
+If you actually run the experiment above you are likely to see several errors and warnings when you try to execute
+make. mutantspider.mk requires, and checks for, certain things on your system.  If it finds something wrong with the
 configuration it will tell you what is wrong and either stop, or just warn you that it is making a default decision
 about something depending on what condition it is dealing with.
 
@@ -85,8 +88,8 @@ Here are the things it will WARN about, but then make default decisions:
     in the current directory.  The Makefile above did not define this, so would have produced this warning, and it
     is also why the various myApp.* files are in the "out" directory.
     
-There are also a few things that you can optionally set, but which have good-enough defaults that if you don't set them
-MMS just uses its default.  These are:
+There are also a few things that you can optionally set, but which have good-enough defaults that if you don't set
+them MMS just uses its default.  These are:
 ######################################
 
 1)  CONFIG.  If this is not set prior to including mutantspider.mk then it will default to "release".  That is why the
@@ -101,12 +104,13 @@ MMS just uses its default.  These are:
 A few cool things that MMS does:
 ################################
 
-Dependency Tracking.  While not absolutely perfect in every possible situation, makefiles built with MMS will generally
-only compile what needs to be compiled each time.  In addition to automatically tracking header file dependencies it also
-tracks compiler and linker option changes.  If you change the compiler options you are using it will recompile
-everything.
+Dependency Tracking.  While not absolutely perfect in every possible situation, makefiles built with MMS will
+generally only compile what needs to be compiled each time.  In addition to automatically tracking header file
+dependencies it also tracks compiler and linker option changes.  If you change the compiler options you are using it
+will recompile everything.
 
-Supports multiple source files with the same name (for example, "utils.c"), as long as they are in different directories.
+Supports multiple source files with the same name (for example, "utils.c"), as long as they are in different
+directories.
 
 Supports fully dependent makefiles so that parallel make works correctly.  Executing make like "make -j8" will
 cause it to compile 8 files in parallel (speeding up build times if you have an 8 core machine).
@@ -122,9 +126,9 @@ mechanism for dealing with configurations, and uses this mechanism internally to
 Defining (or customizing) configurations:
 ##########################################
 
-Any single invocation of make in MMS uses a single "configuration".  This is simply the value of the CONFIG variable for
-that invocation of make.  If not specified CONFIG will default to "release".  The value of the CONFIG variable affects
-the build in the following ways:
+Any single invocation of make in MMS uses a single "configuration".  This is simply the value of the CONFIG variable
+for that invocation of make.  If not specified CONFIG will default to "release".  The value of the CONFIG variable
+affects the build in the following ways:
 
 1)  Intermediate and final output files are placed in directory named $(CONFIG) -- within the $(ms.INTERMEDIATE_DIR)
     or $(ms.OUT_DIR) directories.
@@ -159,8 +163,8 @@ Creating "component-like" Makefiles
 ###################################
 
 MMS is oriented towards a build system where all source files are compiled into a single executable.  It does not have
-formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide tools to
-automatically build them and link them together.  This is mostly because some of the compilers in the set that it
+formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide tools
+to automatically build them and link them together.  This is mostly because some of the compilers in the set that it
 supports do not have good mechanisms for these sorts of objects.
 
 The idea instead is that logical groups of source files would have a dedicated <component>.mk and that the primary
@@ -327,9 +331,9 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     
     CFLAGS_<compiler-name>_<source-file-name>
     
-    in the options that are passed to the compiler when compiling that file in that compiler.  To modify the component2
-    makefile above in 3, so that it added -msse4.2 to the compile options only for source2.cpp, when compiled for
-    pnacl, the makefile could contain a statement such as:
+    in the options that are passed to the compiler when compiling that file in that compiler.  To modify the
+    component2 makefile above in 3, so that it added -msse4.2 to the compile options only for source2.cpp, when
+    compiled for pnacl, the makefile could contain a statement such as:
     
     CFLAGS_pnacl_$(COMPONENT2_DIR)/source/source2.cpp = -msse4.2
     
@@ -353,9 +357,9 @@ then C/C++ code will be able to execute:
 	
 to open and read the contents of that file.  Currently, all such files will appear flat within the "/resources"
 directory (no subdirectories), and so will need to have unique names for each file.  This directory is also mounted
-read-only, and so it will fail if you attempt to add files to it or modify any of the existing files.  Files within the
-"/resources" directory must be opened read-only ("r", if you are using fopen).  The dependency mechanism of MMS will
-correctly re-include the startup.config file if you edit it and then execute make again.
+read-only, and so it will fail if you attempt to add files to it or modify any of the existing files.  Files within
+the "/resources" directory must be opened read-only ("r", if you are using fopen).  The dependency mechanism of MMS
+will correctly re-include the startup.config file if you edit it and then execute make again.
 
 
 A few more cool things you can do with MMS:
@@ -364,9 +368,9 @@ A few more cool things you can do with MMS:
 1. Removing specific files from specific builds.
 
 Your project may contain source files that are needed in your pnacl build, but are not compilable in your emcc build.
-While you could solve this problem by adding #ifndef (EMSCRIPTEN) blocks inside the files themselves sometimes you don't
-want to modify these sources at all.  When computing the list of files to compile for a particular build, MMS always
-excludes any file that is listed in the <compiler>_EXCLUDE variable.  So for example:
+While you could solve this problem by adding #ifndef (EMSCRIPTEN) blocks inside the files themselves sometimes you
+don't want to modify these sources at all.  When computing the list of files to compile for a particular build, MMS
+always excludes any file that is listed in the <compiler>_EXCLUDE variable.  So for example:
 
 emcc_EXCLUDE+=$(COMPONENT2_DIR)/source/source1.cpp
 
@@ -374,9 +378,9 @@ will cause source1.cpp to be skipped when building with emcc (but not skipped wh
 
 
 2.  Google's Pepper sdk comes with both debug and release builds of their ppapi and ppapi_cpp libraries.  If you know
-the difference between these two and want to specify which of the two are used for your build you can do this by setting
-the ms.NACL_LIB_PATH to either Debug or Release (be careful to use these exact names, including the captitalization).
-If not specified, MMS will use Debug for CONFIG=debug, and Release for anything else.
+the difference between these two and want to specify which of the two are used for your build you can do this by
+setting the ms.NACL_LIB_PATH to either Debug or Release (be careful to use these exact names, including the
+captitalization). If not specified, MMS will use Debug for CONFIG=debug, and Release for anything else.
 
 
 3.  If your project includes javascript files and you would like to run the closure compiler that comes with your
