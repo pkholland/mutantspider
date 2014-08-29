@@ -18,22 +18,20 @@ like:
 
 #########################
 
-# MMS guidelines are to build the target 'all' by defaut, so list it first here
-# in case any of the further code wants to declare a target.  This will cause
-# 'all' to be the default
+# MMS guidelines are to build the target 'all' by defaut, so list it first here in case any of the further code
+# wants to declare a target.  This will cause 'all' to be the default
 .PHONY: all
 all:
 
 SOURCES:=  { some list of C/C++ source files you want to compile into your web page }
 INC_DIRS:= { the include paths needed (if any) to compile the sources in SOURCES }
 
-# this defines a set of functions we will use below.
-# it is recommended to put "include mutantspider.mk" AFTER we have specified all of our SOURCES, compile options,
-# etc...
+# this defines a set of functions we will use below. It is recommended to put "include mutantspider.mk" AFTER we
+# have specified all of our SOURCES, compile options, etc...
 include mutantspider.mk
 
 #
-# some example name we want to use
+# some example name we want to use for our application
 #
 BUILD_NAME:=myApp
 
@@ -69,7 +67,7 @@ that MMS supports. Currently this set would be myApp.js, myApp.js.mem, myApp.pex
 If you actually run the experiment above you are likely to see several errors and warnings when you try to execute
 make. mutantspider.mk requires, and checks for, certain things on your system.  If it finds something wrong with the
 configuration it will tell you what is wrong and either stop, or just warn you that it is making a default decision
-about something depending on what condition it is dealing with.
+about something depending on what condition it is checking for.
 
 Here are the REQUIREMENTS that mutantspider.mk checks for and stops if they are missing:
 ########################################################################################
@@ -131,7 +129,7 @@ Defining (or customizing) configurations:
 ##########################################
 
 Any single invocation of make in MMS uses a single "configuration".  This is simply the value of the CONFIG variable
-for that invocation of make.  If not specified CONFIG will default to "release".  The value of the CONFIG variable
+for that invocation of make.  If not specified, CONFIG will default to "release".  The value of the CONFIG variable
 affects the build in the following ways:
 
 1)  Intermediate and final output files are placed in directory named $(CONFIG) -- within the $(ms.INTERMEDIATE_DIR)
@@ -191,7 +189,7 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     myDirectory1\
     myDirectory2
 
-3)  Use relative path's to all of your sources and include dir's and specify it so that they are relative to the
+3)  Use relative path's to all of your sources and include dir's and specify them so that they are relative to the
     original make directory $(CURDIR) -- not simply relative to the directory of your makefile.  This will require a
     small bit of make-style computing to determine depending on the directory layout you are using for your
     component. In a simple case where all of your files are in known locations that are subdirectories of where your
@@ -250,7 +248,7 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     while this can be done by just appending '../' to the end of what we found, that ends up being a little messy in
     certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced.  For
     example dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will
-    end up placing these in different directories unnecessarily if we don't simplify the representations of these
+    end up placing things in different directories unnecessarily if we don't simplify the representations of these
     directories.  Here is a bit of make magic to clean these things up.
     
     ##############################
