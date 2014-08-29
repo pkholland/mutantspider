@@ -189,9 +189,9 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 
 3)  Use relative path's to all of your sources and include dir's and specify it so that they are relative to the
     original make directory $(CURDIR) -- not simply relative to the directory of your makefile.  This will require a
-    small bit of make-style computing to determine depending on the directory layout you are using for your component.
-    In a simple case where all of your files are in known locations that are subdirectories of where your makefile is,
-    you can do this by simply computing the directory of your makefile.
+    small bit of make-style computing to determine depending on the directory layout you are using for your
+    component. In a simple case where all of your files are in known locations that are subdirectories of where your
+    makefile is, you can do this by simply computing the directory of your makefile.
     
     Consider the following layout:
     
