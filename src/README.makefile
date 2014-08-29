@@ -1,5 +1,9 @@
 Mutantspider Makefile System
 
+Audience: This document is mostly intended for people who want to _use_ the Mutantspider Makefile System.  For
+detailed information on how it works, please see the file mutantspider.mk
+
+
 The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be
 used by including it in some other makefile, and then following a set of guidelines on how to write those other
 makefiles that are using it.  It is also primarily intended to support a project that constucts a web application, in
