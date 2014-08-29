@@ -1,33 +1,58 @@
+/*
+ Copyright (c) 2014 Mutantspider authors, see AUTHORS file.
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
+*/
 
 #include "mutantspider.h"
 
+// caller sees the files they have requested in this location of the file system
 std::string persistent_name = "/persistent";
 
 #include <errno.h>
 #include <sys/stat.h>
 #include <dirent.h>
 
+/*
+ like "mkdir -p", create all subdirectories and ignore errors
+ */
 static void mkdir_p(const std::string& path)
 {
-	size_t pos = 0;
-	std::string dir("/");
-	while (pos != path.npos) {
-		pos = path.find(dir,pos+1);
-		std::string sp = path.substr(0,pos);
-		struct stat st;
-		
-		// as of pepper35, errno is not propagated well through
-		// the fuse api.  So we don't check errno being ENOENT
-		// the way one might expect here, and just assume that
-		// any case of stat returning -1 implies that the underlying
-		// reason is ENOENT
-		
-		if (stat(sp.c_str(), &st) == -1)
-		{
-			if (mkdir(sp.c_str(),0777) != 0)
-				fprintf(stderr, "mkdir(\"%s\") failed, errno: %d\n", sp.c_str(), errno);
-		}
-	}
+    size_t pos = 0;
+    std::string dir("/");
+    while (pos != path.npos) {
+        pos = path.find(dir,pos+1);
+        std::string sp = path.substr(0,pos);
+        struct stat st;
+
+        // as of pepper35, errno is not propagated well through
+        // the fuse api.  So we don't check errno being ENOENT
+        // the way one might expect here, and just assume that
+        // any case of stat returning -1 implies that the underlying
+        // reason is ENOENT
+
+        if (stat(sp.c_str(), &st) == -1)
+        {
+            if (mkdir(sp.c_str(),0777) != 0)
+                fprintf(stderr, "mkdir(\"%s\") failed, errno: %d\n", sp.c_str(), errno);
+        }
+    }
 }
 
 #if defined(__native_client__)
@@ -43,664 +68,974 @@ static void mkdir_p(const std::string& path)
 
 namespace {
 
+// where we mount the html5fs file system
 std::string html5_shadow_name = "/.html5fs_shadow";
+
+// the file data itself for /persistent is actually mounted here.
+// our fuse-based code supporting the /persistent directory is a
+// redirect to this location, and then a background thread mirrors
+// everything to /.html5fs_shadow
 std::string mem_shadow_name = "/.memfs_shadow";
 
-std::list<std::pair<void (*)(void*), void*> >	msf_task_list;
-std::mutex										msf_mtx;
-std::condition_variable							msf_cnd;
+// data structures we use to coordinate tasks on the background thread
+std::list<std::pair<void (*)(void*), void*> >   pbmemsf_task_list;
+std::mutex                                      pbmemsf_mtx;
+std::condition_variable                         pbmemsf_cnd;
 
-void fs_worker()
+// thread proc that runs forever, waiting for new "tasks"
+// to show up in the pbmemsf_task_list.  It executes them
+// when it gets them.
+void pbmemfs_worker()
 {
-	while (true)
-	{
-		std::pair<void (*)(void*), void*> task;
-		{
-			std::unique_lock<std::mutex> lk(msf_mtx);
-			msf_cnd.wait(lk, []{return !msf_task_list.empty();});
-			task = msf_task_list.front();
-			msf_task_list.pop_front();
-		}
-		task.first(task.second);
-	}
+    while (true)
+    {
+        std::pair<void (*)(void*), void*> task;
+        {
+            std::unique_lock<std::mutex> lk(pbmemsf_mtx);
+            pbmemsf_cnd.wait(lk, []{return !pbmemsf_task_list.empty();});
+            task = pbmemsf_task_list.front();
+            pbmemsf_task_list.pop_front();
+        }
+        task.first(task.second);
+    }
 }
 
+// given an arbitrary callable function 'f', along with an arbitrary
+// list of (copyable) arguments, add a task that will execute
+// "f(args...)", to pbmemsf_task_list and then signal pbmemfs_worker
+// to pick up and execute that task.
+//
+// for example:
+//
+//    bkg_call(foo,100,j);
+//
+// causes "foo(100,j)" to execute in the background thread
+//
 template<typename F, typename ...Args>
-auto do_call(F&& f, Args&&... args) -> typename std::result_of<F (Args...)>::type
+auto bkg_call(F&& f, Args&&... args) -> typename std::result_of<F (Args...)>::type
 {
-	// note, that while we could have a special case for when this is called off the main thread,
-	// so that it just executed the function, we wouldn't have a way to ensure thread correctness
-	// if a caller used its own synchronization mechanism while accessing a file from multiple threads.
-	// For now, we _always_ implement these calls using this task_list, which ensures that they
-	// are executed in the order that the client expected.
-	auto b = std::bind(f, std::forward<Args>(args)...);
-	using function_type = decltype(b);
-	auto p = new function_type(b);
-	
-	std::unique_lock<std::mutex> lk(msf_mtx);
-	msf_task_list.push_back(std::make_pair<void (*)(void*), void*>([] (void* _f)
-																		{
-																			function_type* f = static_cast<function_type*>(_f);
-																			(*f)();
-																			delete f;
-																		}, p));
-	msf_cnd.notify_one();
+    auto b = std::bind(f, std::forward<Args>(args)...);
+    using function_type = decltype(b);
+    auto p = new function_type(b);
+    
+    std::unique_lock<std::mutex> lk(pbmemsf_mtx);
+    pbmemsf_task_list.push_back(std::make_pair<void (*)(void*), void*>(
+        [] (void* _f)
+        {
+            function_type* f = static_cast<function_type*>(_f);
+            (*f)();
+            delete f;
+        }, p)
+                            );
+    pbmemsf_cnd.notify_one();
 }
 
+// simple data structure for when we need to keep track
+// of both the file descriptor in /.memfs_shadow as well
+// as the one in /.html5fs_shadow
 struct file_ref
 {
-	int	memfs_fd_;
-	int shadow_fd_;
-	
-	file_ref(int memfs_fd)
-		: memfs_fd_(memfs_fd),
-		  shadow_fd_(-1)
-	{}
+    int	memfs_fd_;
+    int html5fs_fd_;
+    
+    file_ref(int memfs_fd)
+        : memfs_fd_(memfs_fd),
+          html5fs_fd_(-1)
+    {}
 };
 
+// set the 'fh' field of finfo.  If the file is writable
+// then we use an allocated datastructure (file_ref) to keep
+// track of both the file descriptor in /.memfs_shadow as well
+// as /.html5fs_shadow.  Otherwise we just keep track of the
+// the one in /.memfs_shadow
 bool set_fh(struct fuse_file_info* finfo, mode_t mode, int fd)
 {
-	if ((mode & O_ACCMODE) != O_RDONLY)
-	{
-		// either O_WRONLY or O_RDWR, so it is possible that it will be written to
-		auto fr = new file_ref(fd);
-		finfo->fh = reinterpret_cast<decltype(finfo->fh)>(fr);
-		return true;
-	}
-	else
-	{
-		finfo->fh = (fd << 1) | 1;	// malloc'ed pointers can't have 1 in the low bit, so use that to distinguish
-		return false;
-	}
+    if ((mode & O_ACCMODE) != O_RDONLY)
+    {
+        // either O_WRONLY or O_RDWR, so it is possible that it will be
+        // written to
+        auto fr = new file_ref(fd);
+        finfo->fh = reinterpret_cast<decltype(finfo->fh)>(fr);
+        return true;
+    }
+    else
+    {
+        // malloc'ed pointers can't have 1 in the low bit, so use that
+        // to distinguish between the two cases.
+        finfo->fh = (fd << 1) | 1;
+        return false;
+    }
 }
 
+// get the file_ref if there is one (the file is writable)
+// or 0 if not.
 file_ref* get_fr(struct fuse_file_info* finfo)
 {
-	if (finfo->fh & 1)
-		return 0;
-	return reinterpret_cast<file_ref*>(finfo->fh);
+    if (finfo->fh & 1)
+        return 0;
+    return reinterpret_cast<file_ref*>(finfo->fh);
 }
 
+// get the primary file descriptor (for the file in
+// in /.memfs_shadow)
 int get_fd(struct fuse_file_info* finfo)
 {
-	auto fr = get_fr(finfo);
-	return fr ? fr->memfs_fd_ : finfo->fh >> 1;
+    auto fr = get_fr(finfo);
+    return fr ? fr->memfs_fd_ : finfo->fh >> 1;
 }
+    
+///////////////////////////////////////////////////////////
 
 // Called when a filesystem of this type is initialized.
-void* msf_init(struct fuse_conn_info* conn)
+void* pbmemsf_init(struct fuse_conn_info* conn)
 {
-	return 0;
+    return 0;
 }
 
 // Called when a filesystem of this type is unmounted.
-void msf_destroy(void* p)
+void pbmemsf_destroy(void* p)
 {
-	printf("msf_destroy(%p)\n", p);
 }
 
 // Called by access()
-int msf_access(const char* path, int mode)
+int pbmemsf_access(const char* path, int mode)
 {
-	return access((mem_shadow_name + path).c_str(),mode);
+    return access((mem_shadow_name + path).c_str(),mode);
 }
 
+// runs in the background thread
 void _open(std::string path, mode_t mode, file_ref* fr)
 {
-	//printf("  _open(%s)\n", path.c_str());
-	int ret = open(path.c_str(),mode);
-	if (ret)
-	{
-		//printf("  _open succeeded, setting (%p)->shadow_fd_ to %d\n", fr, ret);
-		fr->shadow_fd_ = ret;
-	}
-	else
-		fprintf(stderr, "open(%s, %d) failed with errno: %d\n", path.c_str(), mode, errno);
+    int fd = open(path.c_str(),mode);
+    if (fd >= 0)
+        fr->html5fs_fd_ = fd;
+    else
+        fprintf(stderr, "open(%s, %d) failed with errno: %d\n", path.c_str(), (int)mode, errno);
 }
 
 // Called when O_CREAT is passed to open()
-int msf_create(const char* _path, mode_t mode, struct fuse_file_info* finfo)
+int pbmemsf_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
 {
-	//printf("msf_create(\"/persistent%s\"), finfo->flags: 0x%x\n", _path, finfo->flags);
-	std::string path(_path);
-	int ret = open((mem_shadow_name + path).c_str(),/*mode*/O_CREAT | O_RDWR);
-	//printf("msf_create, open(%s, 0x%x) returned %d, errno: %d\n", (mem_shadow_name + path).c_str(), /*mode*/O_CREAT | O_RDWR, ret, errno);
-	if (ret >= 0)
-	{
-		if (set_fh(finfo, mode, ret))
-			do_call(_open,html5_shadow_name + path,/*mode*/O_CREAT | O_RDWR,get_fr(finfo));
-	}
-	return ret;
-}
-
-int msf_fgetattr(const char* path, struct stat* st, struct fuse_file_info* finfo)
-{
-	//printf("msf_fgetattr(\"/persistent%s\") calling fstat(%d)\n", path, get_fd(finfo));
-	return fstat(get_fd(finfo), st);
-}
-
-// Called by fsync(). The datasync paramater is not currently supported.
-int msf_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
-{
-	return 0;	// this can be a no-op for us
-}
-
-void _ftruncate(off_t pos, file_ref* fr)
-{
-	if (ftruncate(fr->shadow_fd_,pos))
-		fprintf(stderr, "ftruncate(%d, %d) failed with errno: %d\n", fr->shadow_fd_, pos, errno);
-}
-
-// Called by ftruncate()
-int msf_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
-{
-	int ret = ftruncate(get_fd(finfo), pos);
-	if (ret == 0)
-		do_call(_ftruncate,pos,get_fr(finfo));
-	return ret;
+    std::string path(_path);
+    int fd = open((mem_shadow_name + path).c_str(),O_CREAT | O_RDWR);
+    if (fd >= 0)
+    {
+        if (set_fh(finfo, O_CREAT | O_RDWR, fd))
+            bkg_call(_open, html5_shadow_name + path, O_CREAT | O_RDWR, get_fr(finfo));
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by stat()/fstat(), but only when fuse_operations.fgetattr is NULL.
 // Also called by open() to determine if the path is a directory or a regular
 // file.
-int msf_getattr(const char* path, struct stat* st)
+int pbmemsf_getattr(const char* path, struct stat* st)
 {
-	int ret = stat((mem_shadow_name + path).c_str(), st);
-	//printf("msf_getattr(\"/persistent%s\"), calling stat(\"%s\"), returned %d, errno: %d, st->st_mode: %o\n", path, (mem_shadow_name+path).c_str(), ret, errno, st->st_mode);
-	return ret;
+    if (stat((mem_shadow_name + path).c_str(), st) == 0)
+        return 0;
+    return -errno;
 }
 
-void _mkdir(std::string path, mode_t mode)
+// Called by fstat()
+int pbmemsf_fgetattr(const char* path, struct stat* st, struct fuse_file_info* finfo)
 {
-	if (mkdir(path.c_str(), mode) != 0)
-		fprintf(stderr, "mkdir(%s, %d) failed with errno: %d\n", path.c_str(), mode, errno);
+    if (finfo->fh != 0)
+    {
+        if (fstat(get_fd(finfo), st) == 0)
+            return 0;
+        return -errno;
+    }
+    else
+        return pbmemsf_getattr(path, st);
+}
+
+// Called by fsync(). The datasync paramater is not currently supported.
+int pbmemsf_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
+{
+    // this can be a no-op for us, we always sync when
+    // the io operation happens
+    return 0;
+}
+
+// Called by ftruncate()
+int pbmemsf_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
+{
+    if (ftruncate(get_fd(finfo), pos) == 0)
+    {
+        bkg_call([](off_t pos, file_ref* fr)
+            {
+                if (ftruncate(fr->html5fs_fd_,pos))
+                    fprintf(stderr, "ftruncate(%d, %d) failed with errno: %d\n", fr->html5fs_fd_, (int)pos, errno);
+            },
+            pos, get_fr(finfo));
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by mkdir()
-int msf_mkdir(const char* _path, mode_t mode)
+int pbmemsf_mkdir(const char* _path, mode_t mode)
 {
-	std::string path(_path);
-	//printf("msf_mkdir(\"/persistent%s\"), calling mkdir(\"%s\")\n", _path, (mem_shadow_name + path).c_str());
-	int ret = mkdir((mem_shadow_name + path).c_str(), mode);
-	if (ret == 0)
-		do_call(_mkdir,html5_shadow_name + path,mode);
-	return ret;
+    std::string path(_path);
+    if (mkdir((mem_shadow_name + path).c_str(), mode) == 0)
+    {
+        bkg_call([](std::string path, mode_t mode)
+            {
+                if (mkdir(path.c_str(), mode) != 0)
+                    fprintf(stderr, "mkdir(%s, %d) failed with errno: %d\n", path.c_str(), (int)mode, errno);
+            },
+            html5_shadow_name + path, mode);
+        return 0;
+    }
+    return -errno;
 }
 
+// Here is the comment in fuse.h from pepper35:
+//
 // Called when O_CREAT is passed to open(), but only if fuse_operations.create
 // is non-NULL.
-int msf_mknod(const char* path, mode_t mode, dev_t dev)
+//
+// But this comment is incorrect -- this is only called if fuse_operations.create
+// _is_ NULL.  We set 'create' to pbmemfs_create, and so this will never be called.
+int pbmemsf_mknod(const char* path, mode_t mode, dev_t dev)
 {
-	fprintf(stderr, "msf_mknod(\"%s\", %d, %d)\n", path, mode, dev);
-	return 0;
+    printf("shouldn't be here!!!  pbmemsf_mknod(\"%s\", %d, %d)\n", path, (int)mode, (int)dev);
+    return -1;
 }
 
 // Called by open()
-int msf_open(const char* _path, struct fuse_file_info* finfo)
+int pbmemsf_open(const char* _path, struct fuse_file_info* finfo)
 {
-	//printf("msf_open(\"/persistent%s\", %p), finfo->flags: 0x%x\n", _path, finfo, finfo->flags);
-	std::string path(_path);
-	int ret = open((mem_shadow_name + path).c_str(),O_RDWR);
-	if (ret >= 0)
-	{
-		set_fh(finfo, O_RDWR, ret);
-		do_call(_open,html5_shadow_name + path,O_RDWR,get_fr(finfo));
-	}
-	return ret;
+    std::string path(_path);
+    int fd = open((mem_shadow_name + path).c_str(),O_RDWR);
+    if (fd >= 0)
+    {
+        set_fh(finfo, O_RDWR, fd);
+        bkg_call(_open, html5_shadow_name + path,O_RDWR, get_fr(finfo));
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by getdents(), which is called by the more standard functions
-// opendir()/readdir().
-int msf_opendir(const char* path, struct fuse_file_info* finfo)
+// opendir()/readdir().  NaCl's fuse implementation calls our pbmemsf_readdir
+// once for each file/dir being enumerated.  So we just call opendir
+// here, keep the DIR*, and then call readdir (once) in our pbmemsf_readdir.
+// Unfortunately, NaCl calls this function (pbmemsf_opendir) once for each
+// file/dir too, so we test to see whether we have already done the opendir
+// step.
+int pbmemsf_opendir(const char* path, struct fuse_file_info* finfo)
 {
-	//printf("msf_opendir(\"/persistent%s\", %p), finfo->fh: %ld\n", path, finfo, finfo->fh);
-	if (finfo->fh == 0)
-		finfo->fh = reinterpret_cast<decltype(finfo->fh)>(opendir((mem_shadow_name + path).c_str()));
-	return 0;
+    if (finfo->fh == 0)
+        finfo->fh = reinterpret_cast<decltype(finfo->fh)>(opendir((mem_shadow_name + path).c_str()));
+    return 0;
 }
 
 // Called by read(). Note that FUSE specifies that all reads will fill the
 // entire requested buffer. If this function returns less than that, the
 // remainder of the buffer is zeroed.
-int msf_read(const char* path, char* buf, size_t count, off_t pos,
-		  struct fuse_file_info* finfo)
+int pbmemsf_read(const char* path, char* buf, size_t count, off_t pos,
+             struct fuse_file_info* finfo)
 {
-	//printf("msf_read(%s, %p, %d)\n", path, buf, count);
-	return pread(get_fd(finfo), buf, count, pos);
+    size_t bytesRead = 0;
+    while (bytesRead < count)
+    {
+        auto bytes = pread(get_fd(finfo), &buf[bytesRead], count - bytesRead, pos + bytesRead);
+        if (bytes == 0)
+            return bytesRead;
+        if (bytes < 0)
+            return -errno;
+        bytesRead += bytes;
+    }
+    return bytesRead;
 }
 
-// Called by getdents(), which is called by the more standard function
-// readdir().
-//
-// NOTE: it is the responsibility of this function to add the "." and ".."
-// entries.
-//
-// This function can be implemented one of two ways:
-// 1) Ignore the offset, and always write every entry in a given directory.
-//    In this case, you should always call filler() with an offset of 0. You
-//    can ignore the return value of the filler.
-//
-//   int my_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
-//                  off_t offset, struct fuse_file_info*) {
-//     ...
-//     filler(buf, ".", NULL, 0);
-//     filler(buf, "..", NULL, 0);
-//     filler(buf, "file1", &file1stat, 0);
-//     filler(buf, "file2", &file2stat, 0);
-//     return 0;
-//   }
-//
-// 2) Only write entries starting from offset. Always pass the correct offset
-//    to the filler function. When the filler function returns 1, the buffer
-//    is full so you can exit readdir.
-//
-//   int my_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
-//                  off_t offset, struct fuse_file_info*) {
-//     ...
-//     size_t kNumEntries = 4;
-//     const char* my_entries[] = { ".", "..", "file1", "file2" };
-//     int entry_index = offset / sizeof(dirent);
-//     offset = entry_index * sizeof(dirent);
-//     while (entry_index < kNumEntries) {
-//       int result = filler(buf, my_entries[entry_index], NULL, offset);
-//       if (filler == 1) {
-//         // buffer filled, we're done.
-//         return 0;
-//       }
-//       offset += sizeof(dirent);
-//       entry_index++;
-//     }
-//
-//     // No more entries, we're done.
-//     return 0;
-//   }
-//
-int msf_readdir(const char* path, void* buf, fuse_fill_dir_t filldir, off_t pos,
-			 struct fuse_file_info* finfo)
+// (big, long comment from fuse.h omitted)
+int pbmemsf_readdir(const char* path, void* buf, fuse_fill_dir_t filldir, off_t pos,
+                struct fuse_file_info* finfo)
 {
-	//printf("  msf_readdidr(\"/persistent%s\", %p, %p, %d, %p) (start index = %d)\n", path, buf, (void*)filldir, (int)pos, finfo, (int)(pos/sizeof(dirent)));
-	DIR* dir = (DIR*)finfo->fh;
-	struct dirent *ent = readdir(dir);
-	if (ent)
-	{
-		struct stat st;
-		if (stat((mem_shadow_name + path + "/" + ent->d_name).c_str(),&st) == 0)
-		{
-			int ret = (*filldir)(buf, ent->d_name, &st, pos);
-			//printf("  filldir(\"%s\") returned %d\n", ent->d_name, ret);
-		}
-	}
-	
-	return 0;
-}
-
-void _close(file_ref* fr)
-{
-	//printf("  _close, calling close(%d)\n", fr->shadow_fd_);
-	if (close(fr->shadow_fd_) != 0)
-		fprintf(stderr, "close(%d) failed, errno: %d\n", fr->shadow_fd_, errno);
-	delete fr;
+    DIR* dir = (DIR*)finfo->fh; // see pbmemsf_opendir
+    
+    struct dirent *ent = readdir(dir);
+    if (ent)
+    {
+        struct stat st;
+        if (stat((mem_shadow_name + path + "/" + ent->d_name).c_str(),&st) == 0)
+            (*filldir)(buf, ent->d_name, &st, pos);
+    }
+    
+    return 0;
 }
 
 // Called when the last reference to this node is released. This is only
 // called for regular files. For directories, fuse_operations.releasedir is
 // called instead.
-int msf_release(const char* path, struct fuse_file_info* finfo)
+int pbmemsf_release(const char* path, struct fuse_file_info* finfo)
 {
-	//printf("msf_release(\"/persistent%s\", %p) on file %s file_ref, calling close(%d)\n", path, finfo, get_fr(finfo) != 0 ? "with" : "without", get_fd(finfo));
-	int ret = close(get_fd(finfo));
-	if (ret == 0)
-	{
-		file_ref* fr = get_fr(finfo);
-		if (fr)
-			do_call(_close,fr);
-	}
-	return ret;
+    if (close(get_fd(finfo)) == 0)
+    {
+        file_ref* fr = get_fr(finfo);
+        if (fr)
+            bkg_call([](file_ref* fr)
+                {
+                    if (close(fr->html5fs_fd_) != 0)
+                        fprintf(stderr, "close(%d) failed, errno: %d\n", fr->html5fs_fd_, errno);
+                    delete fr;
+                },
+                fr);
+        return 0;
+    }
+    return -errno;
 }
 
 // Called when the last reference to this node is released. This is only
 // called for directories. For regular files, fuse_operations.release is
 // called instead.
-int msf_releasedir(const char* path, struct fuse_file_info* finfo)
+int pbmemsf_releasedir(const char* path, struct fuse_file_info* finfo)
 {
-	//printf("msf_releasedir(\"/persistent%s\", %p), finfo->fh: %d\n", path, finfo, (int)finfo->fh);
-	
-	if (finfo->fh)
-	{
-		closedir((DIR*)finfo->fh);
-		finfo->fh = 0;
-	}
-	
-	return 0;
-}
-
-void _rename(std::string path, std::string new_path)
-{
-	if (rename(path.c_str(), new_path.c_str()) != 0)
-		fprintf(stderr, "rename(%s, %s) failed with errno: %d\n", path.c_str(), new_path.c_str(), errno);
+    // see pbmemsf_opendir
+    if (finfo->fh)
+    {
+        closedir((DIR*)finfo->fh);
+        finfo->fh = 0;
+    }
+    
+    return 0;
 }
 
 // Called by rename()
-int msf_rename(const char* _path, const char* _new_path)
+int pbmemsf_rename(const char* _path, const char* _new_path)
 {
-	std::string path(_path);
-	std::string new_path(_new_path);
-	
-	int ret = rename((mem_shadow_name + path).c_str(), (mem_shadow_name + new_path).c_str());
-	if (ret == 0)
-		do_call(_rename,html5_shadow_name + path, html5_shadow_name + new_path);
-	return ret;
-}
-
-void _rmdir(std::string path)
-{
-	if (rmdir(path.c_str()) != 0)
-		fprintf(stderr, "rmdir(\"%s\") failed with errno: %d\n", path.c_str(), errno);
+    std::string path(_path);
+    std::string new_path(_new_path);
+    
+    if (rename((mem_shadow_name + path).c_str(), (mem_shadow_name + new_path).c_str()) == 0)
+    {
+        bkg_call([](std::string path, std::string new_path)
+            {
+                if (rename(path.c_str(), new_path.c_str()) != 0)
+                    fprintf(stderr, "rename(%s, %s) failed with errno: %d\n", path.c_str(), new_path.c_str(), errno);
+            },
+            html5_shadow_name + path, html5_shadow_name + new_path);
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by rmdir()
-int msf_rmdir(const char* _path)
+int pbmemsf_rmdir(const char* _path)
 {
-	std::string path(_path);
-	//printf("msf_rmdir(\"/persistent%s\"), calling rmdir(\"%s\")\n", _path, (mem_shadow_name + path).c_str());
-	int ret = rmdir((mem_shadow_name + path).c_str());
-	if (ret == 0)
-		do_call(_rmdir,html5_shadow_name + path);
-	return ret;
-}
-
-void _truncate(std::string path, off_t pos)
-{
-	if (truncate(path.c_str(),pos) != 0)
-		fprintf(stderr, "truncate(%s, %d) failed with errno: %d\n", path.c_str(), pos, errno);
+    std::string path(_path);
+    if (rmdir((mem_shadow_name + path).c_str()) == 0)
+    {
+        bkg_call([](std::string path)
+            {
+                if (rmdir(path.c_str()) != 0)
+                    fprintf(stderr, "rmdir(\"%s\") failed with errno: %d\n", path.c_str(), errno);
+            },
+            html5_shadow_name + path);
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by truncate(), as well as open() when O_TRUNC is passed.
-int msf_truncate(const char* _path, off_t pos)
+int pbmemsf_truncate(const char* _path, off_t pos)
 {
-	std::string	path(_path);
-	int ret = truncate((mem_shadow_name + path).c_str(),pos);
-	if (ret == 0)
-		do_call(_truncate,html5_shadow_name + path,pos);
-	return ret;
-}
-
-void _unlink(std::string path)
-{
-	if (unlink(path.c_str()) != 0)
-		fprintf(stderr, "unlink(%s) failed with errno: %d\n", path.c_str(), errno);
+    std::string	path(_path);
+    if (truncate((mem_shadow_name + path).c_str(),pos) == 0)
+    {
+        bkg_call([](std::string path, off_t pos)
+            {
+                if (truncate(path.c_str(),pos) != 0)
+                    fprintf(stderr, "truncate(%s, %d) failed with errno: %d\n", path.c_str(), (int)pos, errno);
+            },
+            html5_shadow_name + path, pos);
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by unlink()
-int msf_unlink(const char* _path)
+int pbmemsf_unlink(const char* _path)
 {
-	std::string path(_path);
-	int ret = unlink((mem_shadow_name + path).c_str());
-	if (ret == 0)
-		do_call(_unlink,html5_shadow_name + path);
-	return ret;
-}
-
-void _write(file_ref* fr, std::vector<char> buf, off_t pos)
-{
-	//printf("  _write(%d, %p, %d) (\"%s\")\n", fr->shadow_fd_, &buf.front(), buf.size(), &buf.front());
-	int ret;
-	if ((ret = pwrite(fr->shadow_fd_, &buf.front(), buf.size(), pos)) != buf.size())
-		fprintf(stderr, "pwrite(%d, %p, %d, %d) returned unexpected value (%d), errno: %d\n", fr->shadow_fd_, buf.front(), buf.size(), pos, ret, errno);
+    std::string path(_path);
+    if (unlink((mem_shadow_name + path).c_str()) == 0)
+    {
+        bkg_call([](std::string path)
+            {
+                if (unlink(path.c_str()) != 0)
+                    fprintf(stderr, "unlink(%s) failed with errno: %d\n", path.c_str(), errno);
+            },
+            html5_shadow_name + path);
+        return 0;
+    }
+    return -errno;
 }
 
 // Called by write(). Note that FUSE specifies that a write should always
 // return the full count, unless an error occurs.
-int msf_write(const char* path, const char* buf, size_t count, off_t pos,
-		   struct fuse_file_info* finfo)
+int pbmemsf_write(const char* path, const char* buf, size_t count, off_t pos,
+              struct fuse_file_info* finfo)
 {
-	int ret = pwrite(get_fd(finfo), buf, count, pos);
-	//printf("msf_write(\"/persistent%s\", %p, %d) returned: %d, fd: %d, errno: %d\n", path, buf, count, ret, get_fd(finfo), errno);
-	if (ret == count)
-		do_call(_write,get_fr(finfo), std::vector<char>(buf,&buf[count]),pos);
-	else
-		fprintf(stderr, "pwrite returned %d instead of %d\n", ret, (int)count);
-	return ret;
+    int ret = pwrite(get_fd(finfo), buf, count, pos);
+    if (ret != -1)
+        bkg_call([](file_ref* fr, std::vector<char> buf, off_t pos)
+            {
+                int ret;
+                if ((ret = pwrite(fr->html5fs_fd_, &buf.front(), buf.size(), pos)) != buf.size())
+                    fprintf(stderr, "pwrite(%d, %p, %d, %d) returned unexpected value (%d instead of %d), errno: %d\n",
+                            fr->html5fs_fd_, buf.front(), (int)buf.size(), (int)pos, ret, (int)buf.size(), errno);
+            },
+            get_fr(finfo), std::vector<char>(buf,&buf[ret]), pos);
+    return ret;
 }
 
-
-struct fuse_operations msf_ops = {
-
-  0,
-  0,
-
-  msf_init,
-  msf_destroy,
-  msf_access,
-  msf_create,
-  msf_fgetattr,
-  msf_fsync,
-  msf_ftruncate,
-  msf_getattr,
-  msf_mkdir,
-  msf_mknod,
-  msf_open,
-  msf_opendir,
-  msf_read,
-  msf_readdir,
-  msf_release,
-  msf_releasedir,
-  msf_rename,
-  msf_rmdir,
-  msf_truncate,
-  msf_unlink,
-  msf_write
-
-#if 0
-  // The following functions are not currently called by the nacl_io
-  // implementation of FUSE.
-  int (*bmap)(const char*, size_t blocksize, uint64_t* idx);
-  int (*chmod)(const char*, mode_t);
-  int (*chown)(const char*, uid_t, gid_t);
-  int (*fallocate)(const char*, int, off_t, off_t, struct fuse_file_info*);
-  int (*flock)(const char*, struct fuse_file_info*, int op);
-  int (*flush)(const char*, struct fuse_file_info*);
-  int (*fsyncdir)(const char*, int, struct fuse_file_info*);
-  int (*getxattr)(const char*, const char*, char*, size_t);
-  int (*ioctl)(const char*, int cmd, void* arg, struct fuse_file_info*,
-               unsigned int flags, void* data);
-  int (*link)(const char*, const char*);
-  int (*listxattr)(const char*, char*, size_t);
-  int (*lock)(const char*, struct fuse_file_info*, int cmd, struct flock*);
-  int (*poll)(const char*, struct fuse_file_info*, struct fuse_pollhandle* ph,
-              unsigned* reventsp);
-  int (*read_buf)(const char*, struct fuse_bufvec** bufp, size_t size,
-                  off_t off, struct fuse_file_info*);
-  int (*readlink)(const char*, char*, size_t);
-  int (*removexattr)(const char*, const char*);
-  int (*setxattr)(const char*, const char*, const char*, size_t, int);
-  int (*statfs)(const char*, struct statvfs*);
-  int (*symlink)(const char*, const char*);
-  int (*utimens)(const char*, const struct timespec tv[2]);
-  int (*write_buf)(const char*, struct fuse_bufvec* buf, off_t off,
-                   struct fuse_file_info*);
-#endif
-
+// the data structure we give to fuse
+struct fuse_operations pbmemsf_ops = {
+    
+    0,
+    0,
+    
+    pbmemsf_init,
+    pbmemsf_destroy,
+    pbmemsf_access,
+    pbmemsf_create,
+    pbmemsf_fgetattr,
+    pbmemsf_fsync,
+    pbmemsf_ftruncate,
+    pbmemsf_getattr,
+    pbmemsf_mkdir,
+    pbmemsf_mknod,
+    pbmemsf_open,
+    pbmemsf_opendir,
+    pbmemsf_read,
+    pbmemsf_readdir,
+    pbmemsf_release,
+    pbmemsf_releasedir,
+    pbmemsf_rename,
+    pbmemsf_rmdir,
+    pbmemsf_truncate,
+    pbmemsf_unlink,
+    pbmemsf_write
 };
 
-static void file_cp(const char *to, const char *from)
+// copy the contents of 'from' to 'to'
+void file_cp(const char *to, const char *from)
 {
-    auto from_f = fopen(from, "r");
-    if (from_f == 0)
+    auto from_f = open(from, O_RDONLY);
+    if (from_f == -1)
+    {
+        fprintf(stderr, "open(\"%s\", O_RDONLY) failed with errno: %d\n", from, errno);
         return;
-
-    auto to_f = fopen(to, "w");
-    if (to_f == 0)
-	{
-        fclose(from_f);
-		return;
-	}
-
-	while (true)
-	{
-		char buf[4096];
-		auto nread = fread(buf, 1, sizeof(buf), from_f);
-		if (nread == 0)
-			break;
-		fwrite(buf, 1, nread, to_f);
-		if (nread < sizeof(buf))
-			break;
-	}
-	
-	fclose(to_f);
-	fclose(from_f);
+    }
+    
+    auto to_f = open(to, O_CREAT | O_WRONLY);
+    if (to_f == -1)
+    {
+        fprintf(stderr, "open(\"%s\", O_CREAT | O_WRONLY) failed with errno: %d\n", to, errno);
+        close(from_f);
+        return;
+    }
+    
+    while (true)
+    {
+        char buf[4096];
+        auto nread = read(from_f, buf, sizeof(buf));
+        if (nread == 0)
+            break;
+        if (nread == -1)
+        {
+            fprintf(stderr, "read(%d, %p, %d) failed with errno: %d\n", from_f, buf, (int)sizeof(buf), errno);
+            return;
+        }
+        int written = 0;
+        while (written < nread)
+        {
+            auto bytes = write(to_f, &buf[written], nread - written);
+            if (bytes == -1)
+            {
+                fprintf(stderr, "write(%d, %p, %d) failed with errno: %d\n", to_f, &buf[written], nread-written, errno);
+                return;
+            }
+            written += bytes;
+        }
+    }
+    
+    close(to_f);
+    close(from_f);
 }
 
-static void do_sync(const std::string& dirName)
+// copy the contents of /.html5fs_shadow/dirName to /.memfs_shadow/dirName (recursively)
+void do_sync(const std::string& dirName)
 {
-	std::string html5_dir = html5_shadow_name + "/" + dirName;
-	std::string mem_dir = mem_shadow_name + "/" + dirName;
-	
-	// walk the html5 directory.
-	DIR	*dir;
-	if ((dir = opendir(html5_dir.c_str())) != 0)
-	{
-		struct dirent *ent;
-		while ((ent = readdir(dir)) != 0)
-		{
-			if (strcmp(ent->d_name,".") && strcmp(ent->d_name,".."))
-			{
-				std::string html5_path = html5_dir + "/" + ent->d_name;
-				std::string mem_path = mem_dir + "/" + ent->d_name;
-				struct stat st;
-				if (stat(html5_path.c_str(),&st) == 0)
-				{
-					if (S_ISDIR(st.st_mode))
-					{
-						mkdir(mem_path.c_str(),0777);
-						do_sync(dirName + "/" + ent->d_name);
-					}
-					else
-					{
-						// copy the contents
-						file_cp(mem_path.c_str(),html5_path.c_str());
-					}
-				}
-			}
-		}
-		closedir(dir);
-	}
+    std::string html5_dir = html5_shadow_name + "/" + dirName;
+    std::string mem_dir = mem_shadow_name + "/" + dirName;
+    
+    // walk the html5 directory.
+    DIR	*dir;
+    if ((dir = opendir(html5_dir.c_str())) != 0)
+    {
+        struct dirent *ent;
+        while ((ent = readdir(dir)) != 0)
+        {
+            if (strcmp(ent->d_name,".") && strcmp(ent->d_name,".."))
+            {
+                std::string html5_path = html5_dir + "/" + ent->d_name;
+                std::string mem_path = mem_dir + "/" + ent->d_name;
+                struct stat st;
+                if (stat(html5_path.c_str(),&st) == 0)
+                {
+                    if (S_ISDIR(st.st_mode))
+                    {
+                        mkdir(mem_path.c_str(),0777);
+                        do_sync(dirName + "/" + ent->d_name);
+                    }
+                    else
+                    {
+                        // copy the contents
+                        file_cp(mem_path.c_str(),html5_path.c_str());
+                    }
+                }
+            }
+        }
+        closedir(dir);
+    }
 }
 
 // assumes that the target directory is currently empty, and
-// duplicates the entire directory structure under /.html5fs_shadow/*
-// to /.memfs_shadow/*.  We run this in a background thread because
+// duplicates the entire directory structure under /.html5fs_shadow/...
+// to /.memfs_shadow/...  We run this in a background thread because
 // /.html5fs_shadow is one of nacl's html5fs mounts, which can
 // only be read from (or written to) from a non-main thread (while the
 // main thread is not blocked, waiting for this to complete)
-static void populate_memfs(MS_AppInstance* inst, std::vector<std::string> persistent_dirs)
+void populate_memfs(MS_AppInstance* inst, std::vector<std::string> persistent_dirs)
 {
-	for (auto dir : persistent_dirs)
-	{
-		mkdir_p(html5_shadow_name + "/" + dir);
-		mkdir_p(mem_shadow_name + "/" + dir);
-		do_sync(dir);
-	}
-		
-	inst->PostCommand("async_startup_complete:");
-	
-	fs_worker();
+    for (auto dir : persistent_dirs)
+    {
+        mkdir_p(html5_shadow_name + "/" + dir);
+        mkdir_p(mem_shadow_name + "/" + dir);
+        do_sync(dir);
+    }
+    
+    inst->PostCommand("async_startup_complete:");
+    
+    pbmemfs_worker();   // note, this never returns
 }
 
 //#define _do_clear_
 
+#if defined(_do_clear_)
 void print_indents(int numIndents)
 {
-	for (int i = 0; i < numIndents; i++)
-		printf("    ");
+    for (int i = 0; i < numIndents; i++)
+        printf("    ");
 }
 
-#if defined(_do_clear_)
 void clear_all_r(const std::string& dir_name, int numIndents)
 {
-	print_indents(numIndents);
-	printf("clear_all_r(\"%s\")\n", dir_name.c_str());
-	DIR	*dir;
-	bool unlinked;
-	do {
-		unlinked = false;
-		if ((dir = opendir(dir_name.c_str())) != 0)
-		{
-			struct dirent *ent;
-			while ((ent = readdir(dir)) != 0)
-			{
-				if (strcmp(ent->d_name,".") && strcmp(ent->d_name,".."))
-				{
-					std::string path = dir_name + "/" + ent->d_name;
-					print_indents(numIndents);
-					printf("found file/path %s\n", path.c_str());
-					struct stat st;
-					if (stat(path.c_str(),&st) == 0)
-					{
-						if (S_ISDIR(st.st_mode))
-						{
-							unlinked = true;
-							clear_all_r(path, numIndents+1);
-							int ret = rmdir(path.c_str());
-							print_indents(numIndents);
-							printf("rmdir(%s) returned %d, errno: %d\n", path.c_str(), ret, errno);
-						}
-						else
-						{
-							unlinked = true;
-							int ret = unlink(path.c_str());
-							print_indents(numIndents);
-							printf("unlink(%s) returned %d, errno: %d\n", path.c_str(), ret, errno);
-						}
-					}
-				}
-			}
-			closedir(dir);
-		}
-	} while (unlinked);
+    print_indents(numIndents);
+    printf("clear_all_r(\"%s\")\n", dir_name.c_str());
+    DIR	*dir;
+    bool unlinked;
+    do {
+        unlinked = false;
+        if ((dir = opendir(dir_name.c_str())) != 0)
+        {
+            struct dirent *ent;
+            while ((ent = readdir(dir)) != 0)
+            {
+                if (strcmp(ent->d_name,".") && strcmp(ent->d_name,".."))
+                {
+                    std::string path = dir_name + "/" + ent->d_name;
+                    print_indents(numIndents);
+                    printf("found file/path %s\n", path.c_str());
+                    struct stat st;
+                    if (stat(path.c_str(),&st) == 0)
+                    {
+                        if (S_ISDIR(st.st_mode))
+                        {
+                            unlinked = true;
+                            clear_all_r(path, numIndents+1);
+                            int ret = rmdir(path.c_str());
+                            print_indents(numIndents);
+                            printf("rmdir(%s) returned %d, errno: %d\n", path.c_str(), ret, errno);
+                        }
+                        else
+                        {
+                            unlinked = true;
+                            int ret = unlink(path.c_str());
+                            print_indents(numIndents);
+                            printf("unlink(%s) returned %d, errno: %d\n", path.c_str(), ret, errno);
+                        }
+                    }
+                }
+            }
+            closedir(dir);
+        }
+    } while (unlinked);
 }
 
 void clear_all()
 {
-	clear_all_r(html5_shadow_name, 0);
+    clear_all_r(html5_shadow_name, 0);
 }
+#endif
+
+#if defined(MUTANTSPIDER_HAS_RESOURCES)
+
+const mutantspider::rez_dir_ent* get_dir_ent(const std::string& path,const mutantspider::rez_dir* dir)
+{
+    // path always starts with a '/'
+    
+    auto pos = path.find("/",1);
+    auto d_name = path.substr(1,pos == std::string::npos ? path.length() - 1 : pos - 1);
+    for (size_t i = 0; i < dir->num_ents; i++)
+    {
+        if (d_name == dir->ents[i].d_name)
+        {
+            if (pos == std::string::npos)
+                return &dir->ents[i];
+            if (dir->ents[i].is_dir != 0)
+                return get_dir_ent(path.substr(pos, path.length() - pos), dir->ents[i].ptr.dir);
+            return 0;
+        }
+    }
+    return 0;
+}
+
+const mutantspider::rez_dir_ent* get_dir_ent(const std::string& path)
+{
+    return path == "/" ? &mutantspider::rez_root_dir_ent : get_dir_ent(path, &mutantspider::rez_root_dir);
+}
+
+// Called when a filesystem of this type is initialized.
+void* rezfs_init(struct fuse_conn_info* conn)
+{
+    return 0;
+}
+
+// Called when a filesystem of this type is unmounted.
+void rezfs_destroy(void* p)
+{
+}
+
+// Called by access()
+int rezfs_access(const char* path, int mode)
+{
+    auto ent = get_dir_ent(path);
+    if (!ent)
+        return -ENOENT;
+    if (ent->is_dir || ((mode & O_ACCMODE) != O_RDONLY))
+        return -EPERM;
+    return 0;
+}
+
+// Called when O_CREAT is passed to open()
+int rezfs_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
+{
+    return -EPERM;
+}
+
+int rezfs_setattr(const mutantspider::rez_dir_ent* ent, struct stat* st)
+{
+    memset(st, 0, sizeof(*st));
+    st->st_nlink = 1;
+    if (ent->is_dir)
+        st->st_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
+    else
+    {
+        st->st_mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+        st->st_size = ent->ptr.file->file_data_sz;
+    }
+    return 0;
+}
+
+// Called by stat()/fstat(), but only when fuse_operations.fgetattr is NULL.
+// Also called by open() to determine if the path is a directory or a regular
+// file.
+int rezfs_getattr(const char* path, struct stat* st)
+{
+    auto ent = get_dir_ent(path);
+    if (ent)
+        return rezfs_setattr(ent, st);
+    else
+        return -ENOENT;
+}
+
+// Called by fstat()
+int rezfs_fgetattr(const char* path, struct stat* st, struct fuse_file_info* finfo)
+{
+    if (finfo->fh)
+        return rezfs_setattr(reinterpret_cast<const mutantspider::rez_dir_ent*>(finfo->fh), st);
+    else
+        return rezfs_getattr(path, st);
+}
+
+// Called by fsync(). The datasync paramater is not currently supported.
+int rezfs_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
+{
+    return 0;
+}
+
+// Called by ftruncate()
+int rezfs_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
+{
+    return -EPERM;
+}
+
+// Called by mkdir()
+int rezfs_mkdir(const char* _path, mode_t mode)
+{
+    return -EPERM;
+}
+
+// Here is the comment in fuse.h from pepper35:
+//
+// Called when O_CREAT is passed to open(), but only if fuse_operations.create
+// is non-NULL.
+//
+// But this comment is incorrect -- this is only called if fuse_operations.create
+// _is_ NULL.  We set 'create' to rezfs_create, and so this will never be called.
+int rezfs_mknod(const char* path, mode_t mode, dev_t dev)
+{
+    return -EPERM;
+}
+
+// Called by open()
+int rezfs_open(const char* path, struct fuse_file_info* finfo)
+{
+    auto ent = get_dir_ent(path);
+    if (ent)
+    {
+        finfo->fh = reinterpret_cast<decltype(finfo->fh)>(ent);
+        return 0;
+    }
+    else
+        return -ENOENT;
+}
+
+struct rez_dir_iter
+{
+    rez_dir_iter(const mutantspider::rez_dir* dir) : dir_(dir), index_(-2) {}
+    
+    const mutantspider::rez_dir*    dir_;
+    int                             index_;
+};
+    
+
+// Called by getdents(), which is called by the more standard functions
+// opendir()/readdir().  NaCl's fuse implementation calls our rezfs_readdir
+// once for each file/dir being enumerated.
+int rezfs_opendir(const char* path, struct fuse_file_info* finfo)
+{
+    if (finfo->fh == 0)
+    {
+        auto ent = get_dir_ent(path);
+        if (ent)
+        {
+            if (ent->is_dir)
+            {
+                finfo->fh = reinterpret_cast<decltype(finfo->fh)>(new rez_dir_iter(ent->ptr.dir));
+                return 0;
+            }
+            return -ENOTDIR;
+        }
+        return -ENOENT;
+    }
+    return 0;
+}
+
+// Called by read(). Note that FUSE specifies that all reads will fill the
+// entire requested buffer. If this function returns less than that, the
+// remainder of the buffer is zeroed.
+int rezfs_read(const char* path, char* buf, size_t count, off_t pos,
+             struct fuse_file_info* finfo)
+{
+    const mutantspider::rez_dir_ent* ent = reinterpret_cast<const mutantspider::rez_dir_ent*>(finfo->fh);
+    if ((size_t)pos > ent->ptr.file->file_data_sz)
+        pos = (off_t)ent->ptr.file->file_data_sz;
+    size_t mx_count = ent->ptr.file->file_data_sz - (size_t)pos;
+    if (count > mx_count)
+        count = mx_count;
+    memcpy(buf, &ent->ptr.file->file_data[pos], count);
+    return (int)count;
+}
+
+// (big, long comment from fuse.h omitted)
+int rezfs_readdir(const char* path, void* buf, fuse_fill_dir_t filldir, off_t pos,
+                struct fuse_file_info* finfo)
+{
+    rez_dir_iter* it = reinterpret_cast<rez_dir_iter*>(finfo->fh);
+    if (it->index_ < (int)it->dir_->num_ents)
+    {
+        bool        is_dir;
+        const char* d_name;
+        
+        struct stat st;
+        memset(&st, 0, sizeof(st));
+        
+        switch(it->index_)
+        {
+            case -2:
+                is_dir = true;
+                d_name = ".";
+                break;
+            case -1:
+                is_dir = true;
+                d_name = "..";
+                break;
+            default:
+            {
+                auto ent = &it->dir_->ents[it->index_];
+                is_dir = ent->is_dir;
+                if (!is_dir)
+                    st.st_size = ent->ptr.file->file_data_sz;
+                d_name = ent->d_name;
+            }   break;
+        }
+        
+        st.st_ino = it->index_ + 3;
+        st.st_nlink = 1;
+        if (is_dir)
+            st.st_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
+        else
+            st.st_mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+        
+        ++it->index_;
+        (*filldir)(buf, d_name, &st, pos);
+    }
+    return 0;
+}
+
+// Called when the last reference to this node is released. This is only
+// called for regular files. For directories, fuse_operations.releasedir is
+// called instead.
+int rezfs_release(const char* path, struct fuse_file_info* finfo)
+{
+    finfo->fh = 0;
+    return 0;
+}
+
+// Called when the last reference to this node is released. This is only
+// called for directories. For regular files, fuse_operations.release is
+// called instead.
+int rezfs_releasedir(const char* path, struct fuse_file_info* finfo)
+{
+    delete reinterpret_cast<rez_dir_iter*>(finfo->fh);
+    return 0;
+}
+
+// Called by rename()
+int rezfs_rename(const char* _path, const char* _new_path)
+{
+    return -EPERM;
+}
+
+// Called by rmdir()
+int rezfs_rmdir(const char* _path)
+{
+    return -EPERM;
+}
+
+// Called by truncate(), as well as open() when O_TRUNC is passed.
+int rezfs_truncate(const char* _path, off_t pos)
+{
+    return -EPERM;
+}
+
+// Called by unlink()
+int rezfs_unlink(const char* _path)
+{
+    return -EPERM;
+}
+
+// Called by write(). Note that FUSE specifies that a write should always
+// return the full count, unless an error occurs.
+int rezfs_write(const char* path, const char* buf, size_t count, off_t pos,
+              struct fuse_file_info* finfo)
+{
+    return -EPERM;
+}
+
+// the data structure we give to fuse
+struct fuse_operations rezfs_ops = {
+    
+    0,
+    0,
+    
+    rezfs_init,
+    rezfs_destroy,
+    rezfs_access,
+    rezfs_create,
+    rezfs_fgetattr,
+    rezfs_fsync,
+    rezfs_ftruncate,
+    rezfs_getattr,
+    rezfs_mkdir,
+    rezfs_mknod,
+    rezfs_open,
+    rezfs_opendir,
+    rezfs_read,
+    rezfs_readdir,
+    rezfs_release,
+    rezfs_releasedir,
+    rezfs_rename,
+    rezfs_rmdir,
+    rezfs_truncate,
+    rezfs_unlink,
+    rezfs_write
+};
+
 #endif
 
 }
 
 namespace mutantspider
 {
-
+    
 void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs)
 {
-	nacl_io_init_ppapi(inst->pp_instance(), pp::Module::Get()->get_browser_interface());
-	umount("/");
-	mount("", "/", "memfs", 0, "");
-	
-	if (persistent_dirs.empty())
-		inst->PostCommand("async_startup_complete:");
-	else
-	{
-		int ret = nacl_io_register_fs_type("ms_persist_backed_mem_fs", &msf_ops);
-
-		ret = mount("", html5_shadow_name.c_str(), "html5fs", 0, "type=PERSISTENT,expected_size=1048576");
-				
-		#if defined(_do_clear_)
-		std::thread(clear_all).detach();
-		return;
-		#endif
-		
-		ret = mount("", persistent_name.c_str(), "ms_persist_backed_mem_fs", 0, "");
-		
-		std::thread(std::bind(populate_memfs,inst,persistent_dirs)).detach();
-	}
+    nacl_io_init_ppapi(inst->pp_instance(), pp::Module::Get()->get_browser_interface());
+    
+    // remount the root as a memfs in part because memfs_mount assumes that
+    // all mount points would be under "/", and that this is already a memfs,
+    // so it can "mount" a memfs point by just calling mkdir.
+    umount("/");
+    mount("", "/", "memfs", 0, "");
+    
+    #if defined(MUTANTSPIDER_HAS_RESOURCES)
+    nacl_io_register_fs_type("rez_fs", &rezfs_ops);
+    mount("", "/resources", "rez_fs", 0, "");
+    #endif
+    
+    if (persistent_dirs.empty())
+        inst->PostCommand("async_startup_complete:");
+    else
+    {
+        nacl_io_register_fs_type("persist_backed_mem_fs", &pbmemsf_ops);
+        
+        mount("", html5_shadow_name.c_str(), "html5fs", 0, "type=PERSISTENT,expected_size=1048576");
+        
+        #if defined(_do_clear_)
+        std::thread(clear_all).detach();
+        return;
+        #endif
+        
+        mount("", persistent_name.c_str(), "persist_backed_mem_fs", 0, "");
+        
+        std::thread(std::bind(populate_memfs,inst,persistent_dirs)).detach();
+    }
 }
 
 void memfs_mount(const char* dir)
 {
-	mkdir(dir, 0777);
+    mkdir(dir, 0777);
 }
 
+// end of namespace mutantspider
 }
 
 // #if defined(__native_client__)
@@ -710,30 +1045,35 @@ void memfs_mount(const char* dir)
 
 namespace mutantspider
 {
-
+    
 void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs)
 {
-	if (persistent_dirs.empty())
-		inst->PostCommand("async_startup_complete:");
-	else
-	{
-		for (auto dir : persistent_dirs)
-		{
-			std::string path = persistent_name + "/" + dir;
-			mkdir_p(path);
-			ms_mount(path.c_str(), true/*persistent*/);
-		}
-		ms_syncfs_from_persistent();
-	}
+    #if defined(MUTANTSPIDER_HAS_RESOURCES)
+    //init_resource_map();
+    #endif
+
+    if (persistent_dirs.empty())
+        inst->PostCommand("async_startup_complete:");
+    else
+    {
+        for (auto dir : persistent_dirs)
+        {
+            std::string path = persistent_name + "/" + dir;
+            mkdir_p(path);
+            ms_mount(path.c_str(), true/*persistent*/);
+        }
+        ms_syncfs_from_persistent();
+    }
 }
 
 void memfs_mount(const char* dir)
 {
-	mkdir(dir, 0777);
-	ms_mount(dir, false/*persistent*/);
+    mkdir(dir, 0777);
+    ms_mount(dir, false/*persistent*/);
 }
 
+// end of namespace mutantspider
 }
 
+// #if defined(EMSCRIPTEN)
 #endif
-

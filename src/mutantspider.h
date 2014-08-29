@@ -1440,6 +1440,34 @@
 			T* object;
 		};
 		
+		class Graphics2D
+		{
+		public:
+			Graphics2D() {}
+		
+			Graphics2D(MS_AppInstance* /*instance*/,
+						const Size& size,
+						bool /*alwaysOpaque*/ )
+				: size_(size)
+			{}
+			
+			const Size& size() const
+			{
+				return size_;
+			}
+			
+			void ReplaceContents(ImageData* id)
+			{
+				id_ = *id;
+			}
+			
+			void Flush(const CompletionCallback& callback);
+			
+		private:
+			Size		size_;
+			ImageData	id_;
+		};
+		
 		class Graphics2DP
 		{
 		public:
@@ -1616,29 +1644,7 @@ namespace mutantspider
 		The call to fs_init simply initiates this logic.  When the directories and data are avaiable your instance's HandleMessage
 		will be called with a cmd == "post_asyncfs_init".  It is only legal to perform file IO operations in the /persistent/...
 		directories once this message has been sent.
-		
-		As of pepper35, there are a few known bugs in google's implemenation of html5fs and fuse that cause problems in the nacl builds.
-		These include:
-		
-			1) file creation and modification times are wrong.
-			
-			2) the st_mode field of the "struct stat" passed to the stat function comes back wrong for directories
-				(it is correct for regular files).  This ends up meaning that if you have code that looks something like:
-				
-				struct stat st;
-				if (stat(<some path>, &st) == 0)
-				{
-					if (S_ISDIR(st.st_mode))
-					  <assusme "some path" is a directory>
-				}
-				
-				the code will fail to detect that "some path" is a directory.  One workaround for this is to assume
-				that any path that isn't a regular file must be a directory.  This is reasonable for paths in /persistent/...
-				and works because the st_mode is correct for regular files.  In this case you can simply change the test to:
-				
-					if (!S_ISREG(st.st_mode))
-					  <assume "some path" is a directory>
-					  
+					
 					
 		Note about error reporting:
 		
@@ -1648,6 +1654,22 @@ namespace mutantspider
 		if they occur, are detected long after the initiating IO function has returned.  The general strategy used by mutantspider
 		for these is just to emit an error message to stderr when these asynchronous errors occur.  The expectation is that
 		this is really only useful during debugging when an engineer can examin the error.
+     
+        
+        "Resources"
+        
+        Assuming your project is being compiled with the help of mutantspider.mk, files whose names are listed in the
+        RESOURCES make variable will be available, read-only, in the /resources section of the file system.  For example,
+        if your makefile contains:
+        
+            RESOURCES+=../../some_pic.jpg
+        
+        then after init_fs has returned:
+        
+            FILE* f = fopen("/resources/some_pic.jpg", "r" );
+            
+        will succeed in opening the file, allowing you to read its contents.  See README.makefile for details on how to
+        use this feature.
 	*/
 	void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs);
 	
@@ -1664,4 +1686,35 @@ namespace mutantspider
 	*/
 	void memfs_mount(const char* dir);
 }
+
+#if defined(MUTANTSPIDER_HAS_RESOURCES)
+
+namespace mutantspider
+{
+struct rez_file_ent
+{
+    const unsigned char*    file_data;
+    size_t                  file_data_sz;
+};
+
+struct rez_dir_ent
+{
+    const char* d_name;
+    union {
+        const rez_file_ent* file;
+        const struct rez_dir* dir;
+    } ptr;
+    int is_dir;
+};
+
+struct rez_dir {
+    size_t  num_ents;
+    const rez_dir_ent* ents;
+};
+
+extern const rez_dir rez_root_dir;
+extern const rez_dir_ent rez_root_dir_ent;
+}
+
+#endif
 

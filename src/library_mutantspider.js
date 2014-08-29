@@ -55,21 +55,22 @@ var LibraryMutantspider = {
   ms_mount__deps: ['$FS', '$PBMEMFS', '$MEMFS', '$IDBFS'],
   ms_mount: function(pathAddr,persistent) {
     if (persistent != 0 && IDBFS.indexedDB())
-	  FS.mount(PBMEMFS, {}, Pointer_stringify(pathAddr));
-	else
-	  FS.mount(MEMFS, {}, Pointer_stringify(pathAddr));
+      FS.mount(PBMEMFS, {}, Pointer_stringify(pathAddr));
+    else {
+      if (persistent != 0)
+        console.log('request for persistent mount on ' + Pointer_stringify(pathAddr) + ', but this browser does not support IndexedDB so using non-persistent instead');
+      FS.mount(MEMFS, {}, Pointer_stringify(pathAddr));
+    }
   },
   ms_syncfs_from_persistent__sig: 'v',
   ms_syncfs_from_persistent__deps: ['$FS'],
   ms_syncfs_from_persistent: function() {
-    FS.syncfs(true, function(err)
-                    {
-                      if(err)
-                        mutantspider.post_js_message('#command:async_startup_failed:' + err);
-                      else
-                        mutantspider.post_js_message('#command:async_startup_complete:');
-					}
-              );
+    FS.syncfs(true, function(err) {
+      if(err)
+        mutantspider.post_js_message('#command:async_startup_failed:' + err);
+      else
+        mutantspider.post_js_message('#command:async_startup_complete:');
+    });
   },
 };
 
