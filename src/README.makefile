@@ -92,13 +92,13 @@ There are also a few things that you can optionally set, but which have good-eno
 them MMS just uses its default.  These are:
 ######################################
 
-1)  CONFIG.  If this is not set prior to including mutantspider.mk then it will default to "release".  That is why the
-    example above produces its output in the "release" directory of "out".
+1)  CONFIG.  If this is not set prior to including mutantspider.mk then it will default to "release".  That is why
+    the example above produces its output in the "release" directory of "out".
     
-2)  V (for "verbose output"). If not set, mutantspider.mk defaults to V=0.  When V=0, while make is processing it will
-    show abreviated lines for what tool is currently running and what file it is working on.  When V is anything other
-    than 0 it will show the full command lines that are executing.  For example, invoking make with "make V=1" on the
-    command line will cause it to output full command lines.
+2)  V (for "verbose output"). If not set, mutantspider.mk defaults to V=0.  When V=0, while make is processing it
+    will show abreviated lines for what tool is currently running and what file it is working on.  When V is anything
+    other than 0 it will show the full command lines that are executing.  For example, invoking make with "make V=1"
+    on the command line will cause it to output full command lines.
     
 
 A few cool things that MMS does:
@@ -162,10 +162,10 @@ certain compilers.
 Creating "component-like" Makefiles
 ###################################
 
-MMS is oriented towards a build system where all source files are compiled into a single executable.  It does not have
-formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide tools
-to automatically build them and link them together.  This is mostly because some of the compilers in the set that it
-supports do not have good mechanisms for these sorts of objects.
+MMS is oriented towards a build system where all source files are compiled into a single executable.  It does not
+have formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide
+tools to automatically build them and link them together.  This is mostly because some of the compilers in the set
+that it supports do not have good mechanisms for these sorts of objects.
 
 The idea instead is that logical groups of source files would have a dedicated <component>.mk and that the primary
 Makefile would be expected to include that file the same way it includes mutantspider.mk.
@@ -180,8 +180,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     mySource2.cpp\
     mySource3.cpp
     
-2)  APPEND your custom include paths to the $(INC_DIRS) variable.  This should be done without the "-I" prefix used by
-    most compilers.  For example:
+2)  APPEND your custom include paths to the $(INC_DIRS) variable.  This should be done without the "-I" prefix used
+    by most compilers.  For example:
 
     INC_DIRS+=\
     myDirectory1\
@@ -245,8 +245,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     In this case we want to figure out the directory that is one up from where we found it in the first example.  And
     while this can be done by just appending '../' to the end of what we found, that ends up being a little messy in
     certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced.  For
-    example dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will end
-    up placing these in different directories unnecessarily if we don't simplify the representations of these
+    example dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will
+    end up placing these in different directories unnecessarily if we don't simplify the representations of these
     directories.  Here is a bit of make magic to clean these things up.
     
     ##############################
@@ -287,19 +287,19 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     
     ###############################
     
-4)  If your component has special compile configurations that you use for certain, perhaps debugging, purposes you can
-    easily add a configuration to the whole build system by just defining the compiler and linker options you need for
-    that configuration.  For example, supposed your component has a set of additional defines that you want to use
-    when compiling, you can just put this in your component.mk file:
+4)  If your component has special compile configurations that you use for certain, perhaps debugging, purposes you
+    can easily add a configuration to the whole build system by just defining the compiler and linker options you
+    need for that configuration.  For example, supposed your component has a set of additional defines that you want
+    to use when compiling, you can just put this in your component.mk file:
     
     #
     # add configuration "eng" by describing its cflags
     #
     CFLAGS_eng=$(CFLAGS_debug) -DENGR_BUILD
 
-    This will allow someone to invoke make with "make CONFIG=eng" and it will build all of the sources with the normal
-    debug flags (becuase that is what we specified above), plus #defining ENGR_BUILD.  If you want to permit syntax
-    that looks like:
+    This will allow someone to invoke make with "make CONFIG=eng" and it will build all of the sources with the
+    normal debug flags (becuase that is what we specified above), plus #defining ENGR_BUILD.  If you want to permit
+    syntax that looks like:
     
         make eng
         
@@ -317,8 +317,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     eng: all
     
 5)  And, in fact, the example above in 4 can mostly be done on the command line too, without modifying any makefile
-    sources.  Assume you wanted to build a special version of your components that had "-msse4.2" added to the command
-    line of all compiles.  Without modifying any of the makefiles, simply invoking make with:
+    sources.  Assume you wanted to build a special version of your components that had "-msse4.2" added to the
+    command line of all compiles.  Without modifying any of the makefiles, simply invoking make with:
     
     make CONFIG=sse4.2 CFLAGS_sse4.2="$(CFLAGS_release) -msse4.2"
     
@@ -344,10 +344,10 @@ Resources:
 ##########
 
 "Resources" refer to file-like things that your application may need at runtime.  MMS supports resources via the
-$(RESOURCES) make variable.  Any filename that is listed in the RESOURCES variable at the time you execute 'make' will
-be available in the /resources file system at runtime.  For example, assume that your application needs to read the
-contents of a file in your component2_dir (from above) named "startup.config", and it sits within a directory named
-"rez" within the component2_dir.  If component2.mk contains a line like:
+$(RESOURCES) make variable.  Any filename that is listed in the RESOURCES variable at the time you execute 'make'
+will be available in the /resources file system at runtime.  For example, assume that your application needs to read
+the contents of a file in your component2_dir (from above) named "startup.config", and it sits within a directory
+named "rez" within the component2_dir.  If component2.mk contains a line like:
 
 	RESOURCES+=$(COMPONENT2_DIR)/rez/startup.config
 	
