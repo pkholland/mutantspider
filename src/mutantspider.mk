@@ -258,7 +258,7 @@ ms.EM_EXPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS
 # the projects we are interested produce smaller files if memory-init-file is turned on.  We also add some standard asm.js library stuff
 #
 CFLAGS_emcc+=--memory-init-file 1
-LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EXPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js
+LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EXPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js --js-library $(ms.this_make_dir)library_rezfs.js
 
 #
 # This filesystem implementation will hopefully, eventually get merged into emscripten
@@ -277,10 +277,6 @@ $(ms.this_make_dir)mutantspider_fs.cpp
 # everyone will need to #include "mutantspider.h"
 #
 INC_DIRS+=$(ms.this_make_dir)
-
-#RESOURCES+=$(ms.this_make_dir)hello.txt $(ms.this_make_dir)goodbye.txt
-#$(ms.this_make_dir)hello.txt_DST_DIR=/foobar
-#$(ms.this_make_dir)goodbye.txt_DST_DIR=/foobar/dir
 
 #
 # before the compiler options check logic
@@ -491,7 +487,7 @@ endef
 
 ###############################################################################################
 #
-#   Resource Handling -- only executed if $(RESOURCES) contains at least one file
+#   Resource Handling -- only evaluaged if $(RESOURCES) contains at least one file
 #
 ###############################################################################################
 
@@ -643,6 +639,46 @@ $(ms.INTERMEDIATE_DIR)/auto_gen/resource_list.cpp: $(RESOURCES)
 # add all of the resource C++, plus this resource_list.cpp file to the compile list
 #
 SOURCES+=$(ms.rez_files) $(ms.INTERMEDIATE_DIR)/auto_gen/resource_list.cpp
+
+#################
+
+ms.display_parent_dir=$(if $($(1)_DST_DIR),/resources$($(1)_DST_DIR),/resources)
+
+$(foreach rez,$(sort $(RESOURCES)),$(eval ms.display_rez_fmt_string+=%-40s%s\n))
+$(foreach rez,$(sort $(RESOURCES)),$(eval ms.display_rez_data_string+=$(call ms.display_parent_dir,$(rez))/$(notdir $(rez)) $(rez)))
+
+ms.space:=
+ms.space+=
+ms.display_rez_fmt_string:= $(subst $(ms.space),,$(ms.display_rez_fmt_string))
+
+#
+# the 'display_rez' target lets you see what resources are being built into
+# the project, where they will be available in the file system at run time
+# and where the source files come from
+#
+.PHONY: display_rez
+display_rez:
+	@echo ""
+	@echo "List of resource files that will be available to open/fopen"
+	@echo "at runtime, and where their contents come from, relative to"
+	@echo "the current directory:"
+	@echo ""
+	@printf "%-40s%s\n" "Resource File:" "Original File:"
+	@echo "==============                          =============="
+	@printf "$(ms.display_rez_fmt_string)" $(ms.display_rez_data_string)
+	@echo ""
+
+#
+# the case of an empty RESOURCE list, just add the display_rez target
+#
+else
+
+.PHONY: display_rez
+display_rez:
+	@echo ""
+	@echo "This project contains no resource files in its RESOURCES variable."
+	@echo "No resource data will be built into it"
+	@echo ""
 
 endif
 

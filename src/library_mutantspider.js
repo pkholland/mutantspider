@@ -51,16 +51,21 @@ var LibraryMutantspider = {
   ms_mkdir: function(pathAddr) {
 	FS.mkdir(Pointer_stringify(pathAddr));
   },
-  ms_mount__sig: 'vii',
-  ms_mount__deps: ['$FS', '$PBMEMFS', '$MEMFS', '$IDBFS'],
-  ms_mount: function(pathAddr,persistent) {
-    if (persistent != 0 && IDBFS.indexedDB())
-      FS.mount(PBMEMFS, {}, Pointer_stringify(pathAddr));
+  ms_persist_mount__sig: 'vi',
+  ms_persist_mount__deps: ['$FS', '$PBMEMFS', '$MEMFS', '$IDBFS'],
+  ms_persist_mount: function(pathAddr,persistent) {
+    var path = Pointer_stringify(pathAddr)
+    if (IDBFS.indexedDB())
+      FS.mount(PBMEMFS, {}, path);
     else {
-      if (persistent != 0)
-        console.log('request for persistent mount on ' + Pointer_stringify(pathAddr) + ', but this browser does not support IndexedDB so using non-persistent instead');
-      FS.mount(MEMFS, {}, Pointer_stringify(pathAddr));
+      console.log('request for persistent mount on ' + path + ', but this browser does not support IndexedDB so using non-persistent instead');
+      FS.mount(MEMFS, {}, path);
     }
+  },
+  ms_rez_mount__sig: 'vii',
+  ms_rez_mount__deps: ['$FS', '$REZFS'],
+  ms_rez_mount: function(pathAddr, root_addr) {
+      FS.mount(REZFS, {root_addr: root_addr}, Pointer_stringify(pathAddr));
   },
   ms_syncfs_from_persistent__sig: 'v',
   ms_syncfs_from_persistent__deps: ['$FS'],

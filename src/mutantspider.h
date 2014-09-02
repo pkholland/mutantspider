@@ -246,6 +246,11 @@
 	#include "SDL/SDL.h"
 	#include "SDL/SDL_opengl.h"
 
+  namespace mutantspider
+  {
+    struct rez_dir;
+  }
+
 	/* declarations of functions "implemented" in library_mutantspider.js.  This are all just
 	   pass-throughs to the actual javascript code in mutantspider.js
 	*/
@@ -262,7 +267,8 @@
 	extern "C" void ms_bind_graphics(int width, int height);
 	extern "C" void ms_initialize(void);
 	extern "C" void ms_mkdir(const char* path);
-	extern "C" void ms_mount(const char* path, int persistent);
+	extern "C" void ms_persist_mount(const char* path);
+	extern "C" void ms_rez_mount(const char* path, const mutantspider::rez_dir* root_addr);
 	extern "C" void ms_syncfs_from_persistent(void);
 
 	typedef enum {
@@ -1672,23 +1678,16 @@ namespace mutantspider
         use this feature.
 	*/
 	void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs);
-	
-	/*
-		helper function to mount a memory-base file system at the given path 'dir'.
-		
-		For nacl builds, '/' is mounted as a memory-based file system, so this simply turns into a call to mkdir there.
-		In asm.js builds this mounting of '/' isn't done (it leaves the default file system in place for '/') and the
-		asm.js runtime code follows some of the unix rules a little closer than nacl.  In particular, it requires that there
-		be an existing directory at 'dir' prior to calling mount on 'dir'.  So for asm.js builds this first calls
-		mkdir(dir), follwed by mount(dir, <memory file system stuff>).  Note that once you have a memory file system
-		mounted somewhere, all sub files and directories are also memory-based.  So you usually only need to call
-		this once, with the root of all of the directories you will be using that are memory-based.
-	*/
-	void memfs_mount(const char* dir);
 }
 
 #if defined(MUTANTSPIDER_HAS_RESOURCES)
 
+// careful!
+// in the emscripten builds these data structures are directly read out of memory
+// by the javascript support code in library_rezfs.js.  If you change anything about
+// these, or the way the makefile generates the code in resource_list.cpp, then you
+// will need to make matching changes to the js code in library_rezfs.js.  Typically
+// these will be statements involving 'makeGetValue'
 namespace mutantspider
 {
 struct rez_file_ent

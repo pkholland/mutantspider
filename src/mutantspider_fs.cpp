@@ -1000,9 +1000,6 @@ void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_di
 {
     nacl_io_init_ppapi(inst->pp_instance(), pp::Module::Get()->get_browser_interface());
     
-    // remount the root as a memfs in part because memfs_mount assumes that
-    // all mount points would be under "/", and that this is already a memfs,
-    // so it can "mount" a memfs point by just calling mkdir.
     umount("/");
     mount("", "/", "memfs", 0, "");
     
@@ -1030,11 +1027,6 @@ void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_di
     }
 }
 
-void memfs_mount(const char* dir)
-{
-    mkdir(dir, 0777);
-}
-
 // end of namespace mutantspider
 }
 
@@ -1049,7 +1041,8 @@ namespace mutantspider
 void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs)
 {
     #if defined(MUTANTSPIDER_HAS_RESOURCES)
-    //init_resource_map();
+    mkdir("/resources", 0777);
+    ms_rez_mount("/resources", &rez_root_dir);
     #endif
 
     if (persistent_dirs.empty())
@@ -1060,16 +1053,10 @@ void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_di
         {
             std::string path = persistent_name + "/" + dir;
             mkdir_p(path);
-            ms_mount(path.c_str(), true/*persistent*/);
+            ms_persist_mount(path.c_str());
         }
         ms_syncfs_from_persistent();
     }
-}
-
-void memfs_mount(const char* dir)
-{
-    mkdir(dir, 0777);
-    ms_mount(dir, false/*persistent*/);
 }
 
 // end of namespace mutantspider

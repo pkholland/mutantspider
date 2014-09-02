@@ -348,20 +348,48 @@ Resources:
 "Resources" refer to file-like things that your application may need at runtime.  MMS supports resources via the
 $(RESOURCES) make variable.  Any filename that is listed in the RESOURCES variable at the time you execute 'make'
 will be available in the /resources file system at runtime.  For example, assume that your application needs to read
-the contents of a file in your component2_dir (from above) named "startup.config", and it sits within a directory
+the contents of a file in your component2_dir (from above) named "startup.conf", and it sits within a directory
 named "rez" within the component2_dir.  If component2.mk contains a line like:
 
-	RESOURCES+=$(COMPONENT2_DIR)/rez/startup.config
+    RESOURCES+=$(COMPONENT2_DIR)/rez/startup.conf
 	
 then C/C++ code will be able to execute:
 
-	FILE* f = fopen("/resources/startup.config", "r");
+    FILE* f = fopen("/resources/startup.conf", "r");
 	
-to open and read the contents of that file.  Currently, all such files will appear flat within the "/resources"
-directory (no subdirectories), and so will need to have unique names for each file.  This directory is also mounted
-read-only, and so it will fail if you attempt to add files to it or modify any of the existing files.  Files within
-the "/resources" directory must be opened read-only ("r", if you are using fopen).  The dependency mechanism of MMS
-will correctly re-include the startup.config file if you edit it and then execute make again.
+to open and read the contents of that file.  All such files will appear flat within the "/resources" directory. This
+directory is mounted read-only, and so it will fail if you attempt to add files to it or modify any of the existing
+files.  Files within the "/resources" directory must be opened read-only ("r", if you are using fopen).  The
+dependency mechanism of MMS will correctly re-include the startup.config file if you edit it and then execute make
+again.
+
+If you want a resource file to appear in a subdirectory of "/resources" then you can specify an additional make
+variable, whose name is the (path-qualified) file name, plus "_DST_DIR".  The value of that variable, if it exists,
+will be interpreted as the path of the directory in which you want the file to appear.  All such files will still
+appear inside of "/resources", and so you do _not_ specify that.  For the example above, if component2.mk also
+specified:
+
+    $(COMPONENT2_DIR)/rez/startup.conf_DST_DIR = /my_subdir
+
+then calls to:
+
+    FILE* f = open("/resources/my_subdir/startup.conf", "r");
+
+will succeed in opening the file, allowing you to read its contents.  Note that the <file>_DST_DIR definition starts
+with a "/".  This is required.
+
+You can have any number of these resource files, although each will increase the size of your web app, and so your
+download, by the size of the resource file itself (plus some small amount of overhead).
+
+Mutanspider.mk defines a special target named "display_rez" that will print out all of the resource files you are
+using in the location that they will be available to fopen, along with the original source file that they come from.
+Executing "make display_rez" will show you this list.  If you don't have any resources defined then it will tell you
+that you don't have any resources.
+
+NOTE: this mechanism in mutantspider.mk only works with the files defined it RESOURCES ---> at the time you include
+mutantspder.mk from your makefile <---  If you add to RESOURCES after including mutantspider.mk, whatever you add
+will not be included in the resource mechanism.  Your "include mutanspdider.mk" statement must come _after_ any
+statements that set SOURCES, INC_DIRS, or RESOURCES.
 
 
 A few more cool things you can do with MMS:
