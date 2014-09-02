@@ -369,11 +369,11 @@ will be interpreted as the path of the directory in which you want the file to a
 appear inside of "/resources", and so you do _not_ specify that.  For the example above, if component2.mk also
 specified:
 
-    $(COMPONENT2_DIR)/rez/startup.conf_DST_DIR = /<b>my_subdir</b>
+    $(COMPONENT2_DIR)/rez/startup.conf_DST_DIR = /my_subdir
 
 then calls to:
 
-    FILE* f = open("/resources/<b>my_subdir</b>/startup.conf", "r");
+    FILE* f = open("/resources/my_subdir/startup.conf", "r");
 
 will succeed in opening the file, allowing you to read its contents.  Note that the <file>_DST_DIR definition starts
 with a "/".  This is required.
