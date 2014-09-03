@@ -1,0 +1,42 @@
+
+Interesting targets you can give to make and what they do:
+
+   make
+      make with no target is the same as passing 'release' as the target
+   make release
+      builds the release build of the full web page into deploy/release
+   make debug
+      builds the debug build of the full web page into deploy/debug
+   make run_server
+      builds the release build and then runs a simple http server from
+      deploy/release on port 5103.  Pointing your browser at localhost:5103
+      will run the web page you just built
+   make run_debug_server
+      like 'run_server', except that it does it with the debug build
+   make clean
+      deletes all built files for all builds you have done in the past
+      (for example, cleans both 'debug' and 'release')
+   make display_opts
+      displays the compilers and compiler options you are currently using
+   make display_rez
+      displays the resource files you have listed in the make variable RESOURCES
+   make help
+      shows this information
+
+A few other tricks:
+
+   Passing 'V=1' on the command line to make will cause it to display
+   the entire commands it is issuing to build each piece.  Without this
+   (or by passing 'V=0') it will only show abbreviated lines
+
+   Passing 'CONFIG=debug', or 'CONFIG=release' will explicity set the
+   configuration it is building for a cases where the makefile isn't
+   setting this for you.  For example 'make CONFIG=debug display_opts'
+   will show you the compiler and options you are using for debug builds
+
+   This makefile has full dependencies, implying you can pass an argument
+   like -j6 to get it to run 6 compiles in parallel.  This can speed
+   up full rebuilds considerably if you are running on a machine with
+   6 or more cores.  'make -j6' will build the release build, 6 compiles
+   at a time
+

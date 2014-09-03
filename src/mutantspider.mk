@@ -36,7 +36,7 @@ ifeq (,$(wildcard $(ms.this_make_dir)nacl_sdk_root))
  $(info 'nacl_sdk_root' directory missing)
  $(info Please create a symbolic link named 'nacl_sdk_root' in $(realpath $(ms.this_make_dir)),)
  $(info pointing to the NaCl/Pepper sdk directory you want to use.  For information on how to)
- $(info install the NaCl SDK, please google search for "Google Native Client SDK Download"))
+ $(info install the NaCl SDK, please google search for "Google Native Client SDK Download")
  $(error )
 endif
 

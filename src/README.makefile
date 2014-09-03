@@ -360,7 +360,7 @@ then C/C++ code will be able to execute:
 to open and read the contents of that file.  All such files will appear flat within the "/resources" directory. This
 directory is mounted read-only, and so it will fail if you attempt to add files to it or modify any of the existing
 files.  Files within the "/resources" directory must be opened read-only ("r", if you are using fopen).  The
-dependency mechanism of MMS will correctly re-include the startup.config file if you edit it and then execute make
+dependency mechanism of MMS will correctly re-include the startup.conf file if you edit it and then execute make
 again.
 
 If you want a resource file to appear in a subdirectory of "/resources" then you can specify an additional make

@@ -487,7 +487,7 @@ int pbmemsf_write(const char* path, const char* buf, size_t count, off_t pos,
                 int ret;
                 if ((ret = pwrite(fr->html5fs_fd_, &buf.front(), buf.size(), pos)) != buf.size())
                     fprintf(stderr, "pwrite(%d, %p, %d, %d) returned unexpected value (%d instead of %d), errno: %d\n",
-                            fr->html5fs_fd_, buf.front(), (int)buf.size(), (int)pos, ret, (int)buf.size(), errno);
+                            fr->html5fs_fd_, &buf.front(), (int)buf.size(), (int)pos, ret, (int)buf.size(), errno);
             },
             get_fr(finfo), std::vector<char>(buf,&buf[ret]), pos);
     return ret;
