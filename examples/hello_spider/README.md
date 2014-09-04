@@ -1,7 +1,7 @@
 <h2>Hello Spider</h2>
 
 Simple example of a project using mutantspider tools to build a web page that contains an
-element that whose behavior is implemented by some C++ code.
+element whose behavior is implemented by some C++ code.
 
 <b>Getting Started:</b>
 
