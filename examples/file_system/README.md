@@ -5,7 +5,7 @@ by mutantspider.
 
 <b>Some Background</b>
 
-While much of the "normal" behavior of an operating system can be implemeneted in
+While much of the <i>normal</i> behavior of an operating system can be implemeneted in
 a web-based application, normal POSIX-like file i/o frequently can't.  There are
 several reasons for this including general lack of access to the host OS file system,
 lack of "blocking" API calls like <code>fread</code>, and differences in the way
