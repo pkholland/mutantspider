@@ -28,3 +28,8 @@ then it adds a DOM element to trigger the download of the javascript version of 
 hello_spider_boot.js just contains a small piece of code that is called when the DOM finishes
 being parsed, and at that point calls the mutantspider support code.
 
+The primary targets of the makefile build both the pnacl and javascript versions of
+hello_spider.cpp (plus some support code) and copy these, along with the other needed files
+into a directory named "deploy".  The "run_server" target of the makefile builds all of the
+primary targets, and then runs a simple web server on port 5103.
+
