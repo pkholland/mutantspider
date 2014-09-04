@@ -22,7 +22,7 @@ hello_spider.cpp
 
 <b>Basics of how it works:</b>
 
-The index.html file contains a couple of <code>&#60script&#62</code> elements, one for
+The index.html file contains a couple of <code>script</code> elements, one for
 hello_spider_boot.js and the other for mutantspider.js.  mutantspider.js contains the basic
 logic for checking whether your browser supports pnacl or not, and then if it does adding a
 DOM element to trigger the download of the pnacl version of hello_spider.  If it does not
