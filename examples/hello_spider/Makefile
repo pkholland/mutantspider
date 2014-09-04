@@ -11,7 +11,7 @@
 all:
 
 #
-# set CONFIG for the convience targets 'debug' and 'run_debug_server'
+# set CONFIG for the convenience targets 'debug' and 'run_debug_server'
 # we don't need to worry about either of the release targets because
 # the default CONFIG is release
 #
