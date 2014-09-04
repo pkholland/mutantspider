@@ -474,13 +474,10 @@ var Module;
 
             // if we can't use webgl, then we do a little of our own double-buffered
             // rendering and so need to create a second canvas for that.
-            if ((init_flags & MS_FLAGS_WEBGL_SUPPORT) == 0)
-            {
-                canvas_back_elm = document.createElement('canvas');
-                canvas_back_elm.setAttribute('width', width);
-                canvas_back_elm.setAttribute('height', height);
-                tmp_scale_elm = document.createElement('canvas');
-            }
+            canvas_back_elm = document.createElement('canvas');
+            canvas_back_elm.setAttribute('width', width);
+            canvas_back_elm.setAttribute('height', height);
+            tmp_scale_elm = document.createElement('canvas');
 
             // some "pre-initialization" stuff...
             // note that in the (p)nacl case we do this with a 'locale' argv sort of thing

@@ -29,11 +29,16 @@ const char* locale()
 static MS_Module* gModule;
 static MS_AppInstancePtr gAppInstance;
 
+namespace pp
+{
+	MS_Module* CreateModule();
+}
+
 extern "C" {
 
 void MS_Init(int init_flags)
 {
-	gModule = CreateModule();
+	gModule = pp::CreateModule();
 	gAppInstance = gModule->CreateInstance(0);
 	gAppInstance->Init((EM_InitFlags)init_flags);
 }

@@ -439,7 +439,7 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
 	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
 	$(ms.mkdir) -p $$(@D)
-	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp $(foreach lib,$(3),-l$(lib)),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc)
+	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp -lnacl_io $(foreach lib,$(3),-l$(lib)),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc)
 	$(call ms.CALL_TOOL,$(ms.pnacl_translate), --allow-llvm-bitcode-input -arch i686 $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).bc -o $$@, $$@)
 
 endef
@@ -449,7 +449,7 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).pexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
 	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
 	$(ms.mkdir) -p $$(@D)
-	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $$@ -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp $(foreach lib,$(3),-l$(lib)),$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe)
+	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $$@ -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp -lnacl_io $(foreach lib,$(3),-l$(lib)),$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe)
 	$(call ms.do_strip,$(ms.pnacl_strip),$$@)
 	$(call ms.CALL_TOOL,$(ms.pnacl_finalize),$$@,$$@)
 

@@ -10,7 +10,7 @@ and then execute:
 	
 If this succeeds it will have compiled the C++ code and built a simple web site that includes
 the compiled code.  It will also have launched a simple web server on that site.  You can see this
-web page by opening a browser of you choice and going to:
+web page by opening a browser of your choice and going to:
 
 	http://localhost:5103
 

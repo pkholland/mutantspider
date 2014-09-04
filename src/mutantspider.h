@@ -243,6 +243,8 @@
 	#include <stdint.h>
 	#include <string>
 	#include <sstream>
+    #include <map>
+    #include <vector>
 	#include "SDL/SDL.h"
 	#include "SDL/SDL_opengl.h"
 
@@ -1467,7 +1469,12 @@
 				id_ = *id;
 			}
 			
-			void Flush(const CompletionCallback& callback);
+			void Flush(const CompletionCallback& callback)
+            {
+                ms_stretch_blit_pixels(id_.data(), id_.size().width(), id_.size().height(), 0, 0, 1, 1);
+                ms_paint_back_buffer();
+                callback.Run(0);
+            }
 			
 		private:
 			Size		size_;
@@ -1540,7 +1547,12 @@
 			ms_post_string_message(msg.c_str());
 		}
 		
-		bool BindGraphics(const mutantspider::Graphics2D& g2d);
+		bool BindGraphics(const mutantspider::Graphics2D& g2d)
+		{
+			ms_bind_graphics(g2d.size().width(), g2d.size().height());
+			return true;
+		}
+
 		bool BindGraphics(const mutantspider::Graphics3D& g3d)
 		{
 			return true;
@@ -1606,7 +1618,6 @@
 		}
 	}
 
-	extern "C" MS_Module* CreateModule();
 	#include "mutantspider_js_file.h"
 
 #else
@@ -1677,7 +1688,7 @@ namespace mutantspider
         will succeed in opening the file, allowing you to read its contents.  See README.makefile for details on how to
         use this feature.
 	*/
-	void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs);
+	void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_dirs = std::vector<std::string>());
 }
 
 #if defined(MUTANTSPIDER_HAS_RESOURCES)
