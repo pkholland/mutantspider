@@ -8,6 +8,11 @@
 # then run a server.
 #
 .PHONY: all clean debug release run_server run_debug_server help
+
+#
+# the default target is 'all'.  If you execute 'make' without specifying
+# a target, this is the target it will build
+#
 all:
 
 #
@@ -16,10 +21,10 @@ all:
 # the default CONFIG is release
 #
 ifeq (debug,$(MAKECMDGOALS))
-CONFIG=debug
+ CONFIG=debug
 endif
 ifeq (run_debug_server,$(MAKECMDGOALS))
-CONFIG=debug
+ CONFIG=debug
 endif
 
 #
@@ -35,13 +40,9 @@ debug: all
 release: all
 
 #
-# the list of C/C++ files to compile -- all .cpp files in this directory.
-# this makefile is simple enough that we don't need to define any INC_DIRS,
-# (although we will still have to pass it in to the compile_rules functions
-# because mutantspider.mk has added some of its own dirs to this, and we
-# will need them)
+# the list of C/C++ files to compile -- in our case just the one file hello_spider.cpp
 #
-SOURCES=$(wildcard *.cpp)
+SOURCES=hello_spider.cpp
 
 #
 # where and what we are building
@@ -56,21 +57,16 @@ BUILD_NAME:=hello_spider
 #
 include ../../src/mutantspider.mk
 
-
 #
-# create build/dependency rules for all sources and all compilers
+# this constructs all of the dependencies and build rules
+# for everything we have defined in SOURCES (plus whatever
+# is in INC_DIRS and RESOURCES - but we aren't using either
+# of those here).
 #
-$(foreach src,$(SOURCES),$(eval $(call ms.COMPILE_RULE,$(src),$(INC_DIRS))))
-
+# Debugging hint - if you want to see what rules this constructs
+# change the 'eval' to 'info' and execute make again.
 #
-# create build/dependency rules for the nacl targets
-#
-$(eval $(call ms.NACL_LINKER_RULE,$(BUILD_NAME),$(SOURCES)))
-
-#
-# create build/dependency rules for the asm.js targets
-#
-$(eval $(call ms.EM_LINKER_RULE,$(BUILD_NAME),$(SOURCES)))
+$(eval $(call ms.DEFAULT_BUILD_RULES,$(BUILD_NAME),$(SOURCES)))
 
 #
 # make clean deletes all built files
@@ -86,29 +82,13 @@ clean:
 MS_TARGETS:=$(call ms.TARGET_LIST,$(BUILD_NAME))
 
 #
-# separate them by extension so we can treat
-# them differently in the deployment
-#
-NACL_TARGETS:=$(filter %.pexe %.nmf,$(MS_TARGETS))
-JS_TARGETS:=$(filter %.js %.js.mem,$(MS_TARGETS))
-
-#
-# make sure mutantspider isn't creating some target we don't know how to handle
-#
-UNKNOWN_TARGETS:=$(filter-out $(NACL_TARGETS),$(filter-out $(JS_TARGETS),$(MS_TARGETS)))
-ifneq (,$(UNKNOWN_TARGETS))
- $(info Don't know how to deploy $(UNKNOWN_TARGETS) (produced by mutantspider.mk))
- $(error )
-endif
-
-#
 # list of files which constitute a deployment
 #
 DEPLOY_FILES=\
 $(DEPLOY_DIR)/$(CONFIG)/index.html\
-$(patsubst $(ms.OUT_DIR)%,$(DEPLOY_DIR)%,$(MS_TARGETS))\
 $(DEPLOY_DIR)/$(CONFIG)/hello_spider_boot.js\
-$(DEPLOY_DIR)/$(CONFIG)/mutantspider.js
+$(DEPLOY_DIR)/$(CONFIG)/mutantspider.js\
+$(patsubst $(ms.OUT_DIR)%,$(DEPLOY_DIR)%,$(MS_TARGETS))
 
 #
 # make sure that 'all' builds all of the deploy files

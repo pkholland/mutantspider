@@ -322,10 +322,11 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     sources.  Assume you wanted to build a special version of your components that had "-msse4.2" added to the
     command line of all compiles.  Without modifying any of the makefiles, simply invoking make with:
     
-    make CONFIG=sse4.2 CFLAGS_sse4.2="$(CFLAGS_release) -msse4.2"
+    make CONFIG=sse4.2 CFLAGS_sse4.2="\$(CFLAGS_release) -msse4.2"
     
     will cause it to produce its output in $(ms.OUT_DIR)/sse4.2/, and all files will be compiled with whatever is
-    defined in CFLAGS_release plus the -msse4.2 flag.
+    defined in CFLAGS_release plus the -msse4.2 flag.  But note that in most shells you have to escape the '$'
+    character that prefixes $(CFLAGS_release), as shown above, to keep the shell from trying to interpret this.
 
 6)  File Specific Compiler Flags:
 

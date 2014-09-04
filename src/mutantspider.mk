@@ -13,13 +13,7 @@
 #			be used outside of mutantspider.mk
 #
 #	TODO list:
-#		1) provide explicit bindings of source file suffix -> compiler, and then use $(filter ...) to figure
-#			out which files need to be expanded with which build rules
-#		2) change configuration validation (installed compilers, etc...) so that it is only triggered if
-#			you attempt to build something with that compiler.  Once #1 is done, if *.ts -> the typescript compiler
-#			then it should only check to make sure you have the typescript compiler installed if your SOURCES
-#			contain *.ts files.  This can be done similar to the way the dir.stamp files are handled.
-#		3) ms.do_strip is currently only running if the target is exactly "release".  Improve this somehow.
+#		1) ms.do_strip is currently only running if the target is exactly "release".  Improve this somehow.
 
 
 #
@@ -269,14 +263,14 @@ LDFLAGS_emcc+=--js-library $(ms.this_make_dir)library_pbmemfs.js
 #
 # a few files that implement some (mostly emscripten) support code
 #
-SOURCES+=\
+ms.additional_sources:=\
 $(ms.this_make_dir)mutantspider.cpp\
 $(ms.this_make_dir)mutantspider_fs.cpp
 
 #
 # everyone will need to #include "mutantspider.h"
 #
-INC_DIRS+=$(ms.this_make_dir)
+ms.additional_inc_dirs=$(ms.this_make_dir)
 
 #
 # before the compiler options check logic
@@ -367,6 +361,10 @@ display_opts:
 #	$2 = (with -I prefix) include directories
 #
 define ms.c_compile_rule
+
+-include $(call ms.src_to_dep,$(1),_pnacl)
+-include $(call ms.src_to_dep,$(1),_js)
+
 $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_pnacl.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
 	$(call ms.CALL_TOOL,$(ms.pnacl_cc),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.this_make_dir)nacl_sdk_root/include $(2) $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
@@ -378,6 +376,10 @@ $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_e
 endef
 
 define ms.cxx_compile_rule
+
+-include $(call ms.src_to_dep,$(1),_pnacl)
+-include $(call ms.src_to_dep,$(1),_js)
+
 $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_pnacl.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
 	$(call ms.CALL_TOOL,$(ms.pnacl_cxx),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.this_make_dir)nacl_sdk_root/include $(2) -std=gnu++11 $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
@@ -386,30 +388,6 @@ $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_e
 	$(ms.sed) '1 c\'$$$$'\n''$(call ms.src_to_obj,$(1),_js): \\'$$$$'\n' $(call ms.src_to_dep,$(1),_js)d > $(call ms.src_to_dep,$(1),_js)
 	@rm $(call ms.src_to_dep,$(1),_js)d
 
-endef
-
-#
-# Primary function that the top-most Makefile eval/calls to generate build/dependency rules
-# for all of the sources it knows about
-#
-# for example:
-#	$(foreach src,$(SOURCES),$(eval $(call ms.COMPILE_RULE,$(src),$(INC_DIRS))))
-#
-# assuming that SOURCES is a list of all sources and INC_DIRS is a list of all include directories
-#
-# $1 = source name
-# $2 = (without -I prefix) include directories
-#
-define ms.COMPILE_RULE
-ifneq (clean,$(MAKECMDGOALS))
--include $(call ms.src_to_dep,$(1),_pnacl)
--include $(call ms.src_to_dep,$(1),_js)
-ifeq ($(suffix $(1)),.c)
-$(call ms.c_compile_rule,$(1),$(foreach inc,$(2),-I$(inc)))
-else
-$(call ms.cxx_compile_rule,$(1),$(foreach inc,$(2),-I$(inc)))
-endif
-endif
 endef
 
 #
@@ -484,6 +462,22 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).js.mem: $(ms.OUT_DIR)/$(CONFIG)/$(1).js
 	@touch $(ms.OUT_DIR)/$(CONFIG)/$(1).js.mem
 
 endef
+
+#
+# $1 build name
+# $2 source files to compile
+# $3 include directories
+# $4 additional nacl libraries to link to
+#
+define ms.DEFAULT_BUILD_RULES
+
+$(foreach cpp_src,$(filter %.cc %.cpp,$(2) $(ms.additional_sources)),$(call ms.cxx_compile_rule,$(cpp_src),$(foreach inc,$(3) $(ms.additional_inc_dirs),-I$(inc))))
+$(foreach c_src,$(filter %.c,$(2) $(ms.additional_sources)),$(call ms.c_compile_rule,$(c_src),$(foreach inc,$(3) $(ms.additional_inc_dirs),-I$(inc))))
+$(call ms.NACL_LINKER_RULE,$(1),$(2) $(ms.additional_sources))
+$(call ms.EM_LINKER_RULE,$(1),$(2) $(ms.additional_sources),$(4))
+
+endef
+
 
 ###############################################################################################
 #
@@ -638,7 +632,7 @@ $(ms.INTERMEDIATE_DIR)/auto_gen/resource_list.cpp: $(RESOURCES)
 #
 # add all of the resource C++, plus this resource_list.cpp file to the compile list
 #
-SOURCES+=$(ms.rez_files) $(ms.INTERMEDIATE_DIR)/auto_gen/resource_list.cpp
+ms.additional_sources+=$(ms.rez_files) $(ms.INTERMEDIATE_DIR)/auto_gen/resource_list.cpp
 
 #################
 
