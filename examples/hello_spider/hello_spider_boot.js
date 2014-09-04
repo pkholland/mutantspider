@@ -1,15 +1,16 @@
 
 document.addEventListener('DOMContentLoaded', function(event) {
 
-
-    function updateStatus(opt_message)
+    // set the text of the 'statusField' element (in index.html) to the given message
+    function updateStatus(message)
     {
         var statusField = document.getElementById('statusField');
         if (statusField)
-            statusField.innerHTML = opt_message;
+            statusField.innerHTML = message;
     }
 
-    // called by mutantspider.initializeElement when the plugin-element is ready
+    // called by mutantspider.initializeElement when the plugin-element is ready, as
+    // we as several other interesting points
     function my_on_ready(info)
     {
         if (info.status == 'loading')
@@ -24,6 +25,8 @@ document.addEventListener('DOMContentLoaded', function(event) {
             updateStatus('CRASH: ' + info.message);
     }
 
+    // get the 'black_dot' element (in index.html) and tell mutantspider to
+    // associate the hello_spider component with that element
     var hs_elm = document.getElementById('black_dot');
     mutantspider.initialize_element(hs_elm, {name: 'hello_spider', asm_memory: 64*1024*1024}, my_on_ready);
 
