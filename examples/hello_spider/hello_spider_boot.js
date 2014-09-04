@@ -2,12 +2,12 @@
 document.addEventListener('DOMContentLoaded', function(event) {
 
 
-	function updateStatus(opt_message)
+    function updateStatus(opt_message)
     {
-		var statusField = document.getElementById('statusField');
-		if (statusField)
-			statusField.innerHTML = opt_message;
-	}
+        var statusField = document.getElementById('statusField');
+        if (statusField)
+            statusField.innerHTML = opt_message;
+    }
 
     // called by mutantspider.initializeElement when the plugin-element is ready
     function my_on_ready(info)
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
             updateStatus('CRASH: ' + info.message);
     }
 
-	var hs_elm = document.getElementById('black_dot');
-	mutantspider.initialize_element(hs_elm, {name: 'hello_spider', asm_memory: 64*1024*1024}, my_on_ready);
+    var hs_elm = document.getElementById('black_dot');
+    mutantspider.initialize_element(hs_elm, {name: 'hello_spider', asm_memory: 64*1024*1024}, my_on_ready);
 
 });
