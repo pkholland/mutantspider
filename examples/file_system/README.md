@@ -31,7 +31,7 @@ as special locations within the normal file system.  These two locations are:
 Files within the <code>/persistent</code> subdirectory persist from one page view to
 the next. So, for example, the file <code>/persistent/my_credentials.txt</code> could
 be used to store information that a user might have entered during a previous visit to
-your web site.  If they had done so, and your application had written that information
+your web site.  If they had done so, and had your application written that information
 to this file, then it would be able to read that information back during this visit to
 your page.  This data is stored locally on the user's machine - not on your server.
 
