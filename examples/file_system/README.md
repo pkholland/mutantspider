@@ -47,8 +47,8 @@ off of the main thread.  Mutantspider's /persistent file system can be accessed 
 any thread.  But this comes with the cost of requiring that all data in this file system
 be replicated in RAM.  So this is essentially a RAM-based file system that automatically
 persists changes to the underlying html5fs file system (using a background thread).
-All data in this file system from previous visits of your web page will be loaded into
-RAM when your new visit starts, and will stay in RAM until the user exits or navigates
+All data in this file system from previous visits to your web page will be loaded into
+RAM when the new visit starts, and will stay in RAM until the user exits or navigates
 away from your page.
 
     /resources
