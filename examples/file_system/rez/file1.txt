@@ -1,0 +1,2 @@
+This is the content of file1.  This file should be available in the
+/resources/subdir1 directory because the Makefile requested this.

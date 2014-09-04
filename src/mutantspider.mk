@@ -353,6 +353,13 @@ display_opts:
 	@cat $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts
 	@echo
 
+#
+# helper target to see some interesting targets you can pass to make
+#
+.PHONY: help
+help:
+	@cat $(ms.this_make_dir)make.help
+
 
 #
 # Compile Macro(s)

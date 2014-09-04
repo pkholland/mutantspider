@@ -1,11 +1,11 @@
 #
-# hello_spider makefile
+# file_system makefile
 #
 
 #
 # "PHONY" targets that aren't real build targets, but instead do
 # something interesting -- like build a collection of targets and
-# then run a server.  Here is the list of them supported by hello_spider
+# then run a server.  Here is the list of them supported by file_system
 #
 .PHONY: all clean debug release run_server run_debug_server
 
@@ -34,9 +34,26 @@ debug: all
 release: all
 
 #
-# the list of C/C++ files to compile -- in our case just the one file hello_spider.cpp
+# the list of C/C++ files to compile -- all *.cpp files in our src directory
 #
-SOURCES=hello_spider.cpp
+SOURCES=$(wildcard src/*.cpp)
+
+#
+# Specify what RESOURCES we want included in the build
+# Note that excuting 'make display_rez' will show what resources
+# it is including, and where they will be placed
+#
+
+#
+# the list of resources (files we will fopen and fread during execution)
+#
+RESOURCES=$(wildcard rez/*)
+
+#
+# for testing purposes, make sure that file1.txt is in a custom
+# directory -- not just the default "/resources" directory
+#
+rez/file1.txt_DST_DIR=/subdir1
 
 #
 # where and what we are building
@@ -44,7 +61,7 @@ SOURCES=hello_spider.cpp
 ms.INTERMEDIATE_DIR:=ms_tmp/obj
 ms.OUT_DIR:=ms_tmp/out
 DEPLOY_DIR:=deploy
-BUILD_NAME:=hello_spider
+BUILD_NAME:=file_system
 
 #
 # this defines the functions we use below
@@ -53,9 +70,7 @@ include ../../src/mutantspider.mk
 
 #
 # this constructs all of the dependencies and build rules
-# for everything we have defined in SOURCES (plus whatever
-# is in INC_DIRS and RESOURCES - but we aren't using either
-# of those here).
+# for everything we have defined in SOURCES.
 #
 # Debugging hint - if you want to see what rules this constructs
 # change the 'eval' to 'info' and execute make again.
@@ -80,7 +95,7 @@ MS_TARGETS:=$(call ms.TARGET_LIST,$(BUILD_NAME))
 #
 DEPLOY_FILES=\
 $(DEPLOY_DIR)/$(CONFIG)/index.html\
-$(DEPLOY_DIR)/$(CONFIG)/hello_spider_boot.js\
+$(DEPLOY_DIR)/$(CONFIG)/file_system_boot.js\
 $(DEPLOY_DIR)/$(CONFIG)/mutantspider.js\
 $(patsubst $(ms.OUT_DIR)%,$(DEPLOY_DIR)%,$(MS_TARGETS))
 
@@ -110,7 +125,7 @@ $(foreach cp_file,$(MS_TARGETS),$(eval $(call copy_template,$(cp_file))))
 # instantiate the copy_template for the three files we just copy to the deployment directory
 #
 $(eval $(call copy_template,index.html))
-$(eval $(call copy_template,hello_spider_boot.js))
+$(eval $(call copy_template,file_system_boot.js))
 $(eval $(call copy_template,../../src/mutantspider.js))
 
 ########################################
