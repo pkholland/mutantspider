@@ -610,11 +610,11 @@ var Module;
         }
 
         /*
-            id				value previously returned from new_http_request
-            method			address (offset) of 'GET', 'POST', etc... c-string in Module.HEAP
-            urlAddr			address (offset) of the url c-string to be used in Module.HEAP
-            callbackAddr	function address (index-like thing) of the callback function that will be passed as the first parameter to Module.MS_HttpCallbackProc
-            user_data		address (offset) of user_data that will be passed as the second parameter to Module.MS_HttpCallbackProc
+            id              value previously returned from new_http_request
+            method          address (offset) of 'GET', 'POST', etc... c-string in Module.HEAP
+            urlAddr         address (offset) of the url c-string to be used in Module.HEAP
+            callbackAddr    function address (index-like thing) of the callback function that will be passed as the first parameter to Module.MS_HttpCallbackProc
+            user_data       address (offset) of user_data that will be passed as the second parameter to Module.MS_HttpCallbackProc
             
             TODO: Get error handling (for example, 404 returns, etc...) lined up with nacl's behavior
         */
@@ -751,20 +751,20 @@ var Module;
         }
         
         return {
-            set_initialize:			set_initialize,
-            initialize:				initialize,
-            post_string_message:	post_string_message,
-            bind_graphics:			bind_graphics,
-            back_buffer_clear:		back_buffer_clear,
-            stretch_blit_pixels:	stretch_blit_pixels,
-            paint_back_buffer:		paint_back_buffer,
-            update_view:			update_view,
-            new_http_request:		new_http_request,
-            delete_http_request:	delete_http_request,
-            open_http_request:		open_http_request,
-            get_http_download_size:	get_http_download_size,
-            read_http_response:		read_http_response,
-            timed_callback:			timed_callback
+            set_initialize:         set_initialize,
+            initialize:             initialize,
+            post_string_message:    post_string_message,
+            bind_graphics:          bind_graphics,
+            back_buffer_clear:      back_buffer_clear,
+            stretch_blit_pixels:    stretch_blit_pixels,
+            paint_back_buffer:      paint_back_buffer,
+            update_view:            update_view,
+            new_http_request:       new_http_request,
+            delete_http_request:    delete_http_request,
+            open_http_request:      open_http_request,
+            get_http_download_size: get_http_download_size,
+            read_http_response:     read_http_response,
+            timed_callback:         timed_callback
         };
         
     }());
@@ -838,12 +838,12 @@ var Module;
     /*
         main entry point to initialize an element so that it is supported by a mutantspider component.
         
-        element[in]		existing element in a DOM.  This should be the element that controls the visual
+        element[in]     existing element in a DOM.  This should be the element that controls the visual
                         aspects of the component itself.
-                    
-        params[in]		dictionary specifying various information about the component.  Must contain:
-        
-                            name:			string specifying the file name of the component, including the
+     
+        params[in]      dictionary specifying various information about the component.  Must contain:
+     
+                            name:           string specifying the file name of the component, including the
                                             path prefix, for the file's location on the server, relative to
                                             the root directory being served.  This name should _not_ contain
                                             the file(s) suffix.  For a component named 'comp1' sitting in
@@ -851,50 +851,50 @@ var Module;
                                             including components/comp1.js, components/comp1.js.mem,
                                             components/comp1.pexe, etc...  All such component files must have
                                             the same base name and must be in the same location on the server.
-                            asm_memory:		number of bytes to allocate to the asm.js heap.  This is only used
+                            asm_memory:     number of bytes to allocate to the asm.js heap.  This is only used
                                             in the asm.js case -- not the nacl/pnacl case.  This number should
                                             be a multiple of 4M.
      
-        on_status[in]	function object that will be called to report various aspects of what is happening
+        on_status[in]   function object that will be called to report various aspects of what is happening
                         to the component.  on_status will always be called with a dictionary, and that dictionary
                         will always have a 'status' attribute.  The following values for 'status' are possible:
                         
-                            'loading'	- sent when the component is being downloaded from the server.  If your
+                            'loading'   - sent when the component is being downloaded from the server.  If your
                                           js/pnacl code is big this loading step can be long.  For the 'loading'
                                           status the following additional attributes will be defined:
                                           
-                                          'exe_type'	- set to one of:
+                                          'exe_type'    - set to one of:
                                                             'PNaCl'
                                                             'NaCl'
                                                             'JavaScript'
                                                             'JavaScript Heap File'
                     
-                            'running'	- sent after 'loading' has completed successfully.  Indicates that the
+                            'running'   - sent after 'loading' has completed successfully.  Indicates that the
                                           component is now running correctly.  For the 'running' status the following
                                           additional attributes will be defined:
                                           
-                                          'exe_type;	- set to one of:
+                                          'exe_type;    - set to one of:
                                                             'PNaCl'
                                                             'NaCl'
                                                             'JavaScript'
                     
-                                          'using_web_gl' - true if the underlying system is using webgl/opengl to render
+                                          'using_web_gl'    - true if the underlying system is using webgl/opengl to render
                                           
-                            'message'	- sent when the component itself sends a (typically debugging) message out
+                            'message'   - sent when the component itself sends a (typically debugging) message out
                                           to the web page.  For the 'message' status the following attributes will also
                                           be defined:
                                           
-                                          'message'		- the message itself (typically a string)
+                                          'message'     - the message itself (typically a string)
                                           
-                            'error'		- sent when the system is unable to load the component itself for some reason.
+                            'error'     - sent when the system is unable to load the component itself for some reason.
                                           For the 'error' status the following additional attributes will also be defined:
                                           
-                                          'message'		- a description of the reason for the error
+                                          'message'     - a description of the reason for the error
                                           
-                            'crash'		- sent when a nacl or pnacl module crashes.  This message is never sent for JavaScript
+                            'crash'     - sent when a nacl or pnacl module crashes.  This message is never sent for JavaScript
                                           modules.  For the 'crash' status the following additional attributes will also be defined:
                                           
-                                          'message'		- a description of the reason for the crash
+                                          'message'     - a description of the reason for the crash
                     
     */
     function initialize_element(element, params, on_status)

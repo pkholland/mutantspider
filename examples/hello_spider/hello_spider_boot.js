@@ -4,9 +4,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
     // set the text of the 'statusField' element (in index.html) to the given message
     function updateStatus(message)
     {
-        var statusField = document.getElementById('statusField');
-        if (statusField)
-            statusField.innerHTML = message;
+        document.getElementById('statusField').innerHTML = message;
     }
 
     // called by mutantspider.initializeElement when the plugin-element is ready, as
@@ -27,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
 
     // get the 'black_dot' element (in index.html) and tell mutantspider to
     // associate the hello_spider component with that element
-    var hs_elm = document.getElementById('black_dot');
-    mutantspider.initialize_element(hs_elm, {name: 'hello_spider', asm_memory: 64*1024*1024}, my_on_ready);
+    var bd_elm = document.getElementById('black_dot');
+    mutantspider.initialize_element(bd_elm, {name: 'hello_spider', asm_memory: 64*1024*1024}, my_on_ready);
 
 });
