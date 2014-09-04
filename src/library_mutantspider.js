@@ -53,7 +53,7 @@ var LibraryMutantspider = {
   },
   ms_persist_mount__sig: 'vi',
   ms_persist_mount__deps: ['$FS', '$PBMEMFS', '$MEMFS', '$IDBFS'],
-  ms_persist_mount: function(pathAddr,persistent) {
+  ms_persist_mount: function(pathAddr) {
     var path = Pointer_stringify(pathAddr)
     if (IDBFS.indexedDB())
       FS.mount(PBMEMFS, {}, path);
