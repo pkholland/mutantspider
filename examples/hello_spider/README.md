@@ -1,9 +1,9 @@
-<b>Hello Spider</b>
+<h1>Hello Spider</h1>
 
 simple example of using mutantspider tools to build a web page that contains an element
 that is handled by some C++ code.
 
-Getting Started:
+<b>Getting Started:</b>
 
 First thing, in a console window try cd'ing to this directory (the one with this README file
 in it) and then execute:
@@ -20,7 +20,7 @@ This should present you with a page titled "Hello Spider" with a big red box tha
 click on and drag in.  The code behind this red box is implemented in C++ in the file
 hello_spider.cpp
 
-Basics of how it works:
+<b>Basics of how it works:</b>
 
 The index.html file contains a couple of <script> elements, one for hello_spider_boot.js
 and the other for mutantspider.js.  mutantspider.js contains the basic logic for checking
