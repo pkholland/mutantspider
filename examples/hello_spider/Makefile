@@ -5,7 +5,7 @@
 #
 # "PHONY" targets that aren't real build targets, but instead do
 # something interesting -- like build a collection of targets and
-# then run a server.
+# then run a server.  Here is the list of them supported by hello_spider
 #
 .PHONY: all clean debug release run_server run_debug_server help
 
@@ -34,7 +34,7 @@ help:
 	@cat make.help
 
 #
-# these two phony targets build 'all'
+# these two phony targets depend on (and so build) 'all'
 #
 debug: all
 release: all
@@ -53,7 +53,7 @@ DEPLOY_DIR:=deploy
 BUILD_NAME:=hello_spider
 
 #
-# defines the functions we use below
+# this defines the functions we use below
 #
 include ../../src/mutantspider.mk
 
@@ -66,7 +66,7 @@ include ../../src/mutantspider.mk
 # Debugging hint - if you want to see what rules this constructs
 # change the 'eval' to 'info' and execute make again.
 #
-$(eval $(call ms.DEFAULT_BUILD_RULES,$(BUILD_NAME),$(SOURCES)))
+$(eval $(call ms.BUILD_RULES,$(BUILD_NAME),$(SOURCES)))
 
 #
 # make clean deletes all built files

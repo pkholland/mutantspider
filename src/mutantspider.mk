@@ -412,7 +412,7 @@ ms.DO_NEXE?=0
 #	after our library.
 #
 ifneq (0,$(ms.DO_NEXE))
-define ms.NACL_LINKER_RULE
+define ms.nacl_linker_rule
 $(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl))
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
 	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
@@ -422,7 +422,7 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl
 
 endef
 else
-define ms.NACL_LINKER_RULE
+define ms.nacl_linker_rule
 $(ms.OUT_DIR)/$(CONFIG)/$(1).pexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl))
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
 	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
@@ -440,7 +440,7 @@ endif
 #
 #	Note that the this target will ignore any source file that is included in $(emcc_EXCLUDE)
 #
-define ms.EM_LINKER_RULE
+define ms.em_linker_rule
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js))
 	$(ms.mkdir) -p $$(@D)
 	$(call ms.CALL_TOOL,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
@@ -469,19 +469,19 @@ endef
 # $3 include directories
 # $4 additional nacl libraries to link to
 #
-define ms.DEFAULT_BUILD_RULES
+define ms.BUILD_RULES
 
 $(foreach cpp_src,$(filter %.cc %.cpp,$(2) $(ms.additional_sources)),$(call ms.cxx_compile_rule,$(cpp_src),$(foreach inc,$(3) $(ms.additional_inc_dirs),-I$(inc))))
 $(foreach c_src,$(filter %.c,$(2) $(ms.additional_sources)),$(call ms.c_compile_rule,$(c_src),$(foreach inc,$(3) $(ms.additional_inc_dirs),-I$(inc))))
-$(call ms.NACL_LINKER_RULE,$(1),$(2) $(ms.additional_sources))
-$(call ms.EM_LINKER_RULE,$(1),$(2) $(ms.additional_sources),$(4))
+$(call ms.nacl_linker_rule,$(1),$(2) $(ms.additional_sources),$(4))
+$(call ms.em_linker_rule,$(1),$(2) $(ms.additional_sources))
 
 endef
 
 
 ###############################################################################################
 #
-#   Resource Handling -- only evaluaged if $(RESOURCES) contains at least one file
+#   Resource Handling -- only evaluated if $(RESOURCES) contains at least one file
 #
 ###############################################################################################
 
@@ -498,7 +498,10 @@ ifneq (,$(RESOURCES))
 ms.sanitize_rez_name=rezRec_$(subst /,XS,$(subst .,X_,$(subst X,XX,$(1))))
 
 #
-# $1 file name of path/file to be treated as a resource
+# $1 file name of path/file to be treated as a resource.  The recipe for this
+# runs the contents of the file, $(1), through od (and then sed) to generate
+# a text file that contains a C-like array of hex values -- as in "0x54, 0x2f, ..."
+# with the contents of the file.
 #
 define ms.resource_rule
 $(call ms.resrc_to_auto_gen,$(1)): $(1) | $(dir $(call ms.resrc_to_auto_gen,$(1)))dir.stamp

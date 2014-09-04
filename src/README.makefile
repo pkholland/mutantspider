@@ -38,7 +38,7 @@ BUILD_NAME:=myApp
 #
 # create the build/dependency rules for all sources, in all compilers
 #
-$(eval $(call ms.DEFAULT_BUILD_RULES,$(BUILD_NAME),$(SOURCES),$(INC_DIRS)))
+$(eval $(call ms.BUILD_RULES,$(BUILD_NAME),$(SOURCES),$(INC_DIRS)))
 
 #
 # cause the 'all' target to build all targets defined by mutantspider.mk
