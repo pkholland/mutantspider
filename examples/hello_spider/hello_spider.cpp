@@ -21,8 +21,16 @@
 */
 
 #include "mutantspider.h"
-
 #include "math.h"   // for sqrt
+
+/*
+    Beginner's note:
+    
+    The first thing called is CreateModule at the bottom of this file.
+    Then HelloSpiderModule::CreateInstance is the next thing called
+    (second to bottom of the file).  That creates the HelloSpiderInstance
+    (immediately below this comment)
+*/
 
 
 /*
@@ -47,8 +55,6 @@ public:
                   mouse_loc_x_(0),
                   mouse_loc_y_(0)
             {}
-
-    ~HelloSpiderInstance() {}
             
     #if defined(__native_client__)
     virtual bool Init(uint32_t argc, const char* argn[], const char* argv[])
@@ -63,6 +69,7 @@ public:
         return true;
     }
     
+    // called when the DOM element that this is associated changes sizes
     virtual void DidChangeView(const mutantspider::View& view)
     {
         if (!CreateContext(view.GetRect().size()))
@@ -71,6 +78,7 @@ public:
         Paint();
     }
     
+    // called when an "input" event of some kind is directed at our DOM element
     virtual bool HandleInputEvent(const mutantspider::InputEvent& event)
     {
         if (event.GetType() == MS_INPUTEVENT_TYPE_MOUSEDOWN || event.GetType() == MS_INPUTEVENT_TYPE_TOUCHSTART)
@@ -115,6 +123,8 @@ public:
         return false;
     }
     
+    // function to create our "context" object (the graphic object we
+    // use to display on the web page)
     bool CreateContext(const mutantspider::Size& new_size)
     {
         const bool kIsAlwaysOpaque = true;
@@ -131,12 +141,13 @@ public:
         return true;
     }
     
+    // called to construct the "black-dot" bitmap and show it on the web page
     void Paint()
     {
         // get the rgb vs. bgr layout that is optimal for this system
         MS_ImageDataFormat format = mutantspider::ImageData::GetNativeImageDataFormat();
         
-        // allocate am image buffer in the optimal format, the size of our view
+        // allocate an image buffer in the optimal format, the size of our view
         mutantspider::ImageData image_data(this, format, size_, false/*don't bother to init to zero*/);
 
         // get a pointer to its pixels
@@ -184,6 +195,12 @@ public:
         context_.Flush(callback_factory_.NewCallback(&HelloSpiderInstance::BlitDone));
     }
     
+    // called when a previous call to context_.Flush has completed.  In a multi-threaded
+    // build like nacl, we don't want to try building and displaying a new bitmap until
+    // the previous one completed its display on the screen.  If a new mouse event comes
+    // in between the time we requested that it be displayed (our call to context_.Flush)
+    // and the time it completes its display (when this BlitDone is called), then we just
+    // skip trying to update and display the bitmap.
     void BlitDone(uint32_t)
     {
         blitting_ = false;
@@ -191,18 +208,18 @@ public:
     
 private:
     mutantspider::CompletionCallbackFactory<HelloSpiderInstance> callback_factory_;
-    mutantspider::Graphics2D context_;
-    mutantspider::Size size_;
-    bool			blitting_;
-    bool			mouse_down_;
-    int				mouse_loc_x_;
-    int				mouse_loc_y_;
+    mutantspider::Graphics2D    context_;
+    mutantspider::Size          size_;
+    bool                        blitting_;
+    bool                        mouse_down_;
+    int                         mouse_loc_x_;
+    int                         mouse_loc_y_;
 };
 
 
 /*
     standard Module, whose CreateInstance is called during startup
-    to provide the Instance object which the browser interacts with.
+    to create the Instance object which the browser interacts with.
     Mutantspider follows the Pepper design here of a two-stage
     initialization sequence.  pp::CreateModule is the first stage,
     that Module's (this HellowSpiderModule's) CreateInstance is the
@@ -221,13 +238,15 @@ public:
 /*
     a bit of crappy, almost boilerplace code.
     
-    This is the once place in mutantspider where it leaves the Pepper
+    This is the one place in mutantspider where it leaves the Pepper
     "pp" namespace in tact, and just follows the pepper model for how
     the basic initialization works.  To be a functioning mutantspider
     component, you have to implement pp::CreateModule.  It will be called
-    during initialization of your component.  It is required to return
-    an allocated instance of a Module.  The (virtual) methods of that
-    Module are then called to actually get going.
+    as the first thing during initialization of your component.  It is
+    required to return an allocated instance of a Module.  The (virtual)
+    CreateInstance method of that Module is then called to create an
+    Instance.  That Instance's virtual methods are then called to
+    interact with the web page.
 */
     
 namespace pp {
@@ -235,3 +254,4 @@ namespace pp {
 MS_Module* CreateModule() { return new HelloSpiderModule(); }
 
 }
+
