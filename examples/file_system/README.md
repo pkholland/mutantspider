@@ -13,7 +13,7 @@ persists from one view of a web page to the next.
 
 While not all of these problems can be overcome completely, both Emscripten and
 Native Client contain components to partially address the difference between what
-a C, POSIX-like codebase might expect and what can realistically be implemented inside
+a C, POSIX-like codebase might expect and what can be realistically implemented inside
 of a web page.
 
 Mutantspider contains two additional file system services of its own, also aimed at
