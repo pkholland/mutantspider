@@ -37,10 +37,11 @@ your page.  This data is stored locally on the user's machine - not on your serv
 
 It is implemented using IndexedDB on Emscripten, and html5fs on NaCl, but adds some
 behavior on top of those tools.  Emscripten contains a file system named IDBFS which
-is similar to the <code>/persistent</code> file system.  But IDBFS requires an explicit
-"synchronize" call to transfer file data from the file system to the persistent storage.
-Mutantspider's implementation automatically transfers all changed data to the
-persistent storage, making it behave much more like a normal POSIX file system.
+is similar to mutantspider's <code>/persistent</code> file system.  But IDBFS requires
+an explicit "synchronize" call to transfer file data from the file system to the
+underlying persistent storage.  Mutantspider's implementation automatically transfers
+all changed data to the persistent storage, making it behave much more like a normal
+POSIX file system.
 
 Google's html5fs does not require IDBFS's "synchronize" call, but can only be called
 off of the main thread.  Mutantspider's <code>/persistent</code> file system can be
