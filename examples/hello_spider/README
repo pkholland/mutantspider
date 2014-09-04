@@ -6,13 +6,17 @@ Getting Started:
 First thing, in a console window try cd'ing to this directory (the one with this README file
 in it) and then execute:
 
-	make run_server
-	
+    make run_server
+    
 If this succeeds it will have compiled the C++ code and built a simple web site that includes
 the compiled code.  It will also have launched a simple web server on that site.  You can see
 this web page by opening a browser of your choice and going to:
 
-	http://localhost:5103
+    http://localhost:5103
+
+This should present you with a page titled "Hello Spider" with a big red box that you can
+click on and drag in.  The code behind this red box is implemented in C++ in the file
+hello_spider.cpp
 
 Basics of how it works:
 
