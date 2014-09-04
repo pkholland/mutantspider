@@ -28,9 +28,25 @@ as particular locations within the normal filesystem.  These two locations are:
 
     /persistent
 
-File's within the /persistent subdirectory persist from one page view to the next.
-So, for example, the file /persistent/my_credentials can be used to store information
-that a user might have entered previously when visiting your web app.
+Files within the /persistent subdirectory persist from one page view to the next.
+So, for example, the file /persistent/my_credentials.txt could be used to store
+information that a user might have entered during a previous visit to your web app.
+If they had done so, and your application had written that information to this file
+then you would be able to read it in this visit to your page.  This data is stored
+locally on the user's machine - not on your server.
+
+It is implemented using IndexedDB on Emscripten, and html5fs on NaCl, but adds some
+behavior on top of those tools.  Emscripten contains a file system named IDBFS which
+is similar to the /persistent file system.  But IDBFS requires an explicit "synchronize"
+call to transfer file data from the file system to the persistent storage.  Mutantspider's
+implementation automatically transfers all changed data to the persistent storage,
+making it behave much more like a normal POSIX system.
+
+Google's html5fs does not require IDBFS's "synchronize" call, but can only be called
+off of the main thread.  Mutantspider's /persistent file system can be accessed from
+any thread, but this comes with the cost of requiring that all data in this file system
+be replicated in RAM.  So this is essentially a RAM-based file system that automatically
+persists changes to the underlying html5fs file system (using a background thread).
 
     /resources
     
@@ -40,6 +56,9 @@ expects to be able to open and read that file when executing.  The mutantspider
 build systems has a mechanism allowing you to list all of the files of this type
 in a way that 'make' can understand, and then make available within the /resources
 subdirectory when your application runs.
+
+The src/README.makefile contains information on how to use this RESOURCES feature in
+your makefile.
 
 <b>This example project</b>
 
