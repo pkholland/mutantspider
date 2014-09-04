@@ -4,6 +4,8 @@
 #undef PostMessage
 #endif
 
+extern "C" void MS_SetLocale(const char*);
+
 #if defined(__native_client__)
 
 	#include "ppapi/cpp/completion_callback.h"
@@ -236,7 +238,6 @@
 			pp::Module::Get()->core()->CallOnMainThread(delay_in_milliseconds,callback,result);
 		}
 	}
-	extern "C" void MS_SetLocale(const char*);
 
 #elif defined(EMSCRIPTEN)
 

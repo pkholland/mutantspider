@@ -14,8 +14,7 @@ mergeInto(LibraryManager.library, {
               readdir: REZFS.node_ops.readdir,
             },
             stream: {
-              llseek: REZFS.stream_ops.llseek
-            }
+            },
           },
           file: {
             node: {
@@ -32,7 +31,7 @@ mergeInto(LibraryManager.library, {
       var node = FS.createNode(null,'/',{{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     
       node.node_ops = REZFS.ops_table.dir.node;
-      node.stream_ops = REZFS.ops_table.dir.stream;
+      node.stream_ops = REZFS.ops_table.dir.stream; // currently empty (see dir.stream above), but FS needs a non-null stream_ops.
       node.contents = ['.', '..'];
       
       REZFS.recursive_mount_dir(mount.opts.root_addr, node);
@@ -54,7 +53,7 @@ mergeInto(LibraryManager.library, {
         if (FS.isDir(node.mode)) {
           attr.size = 4096;
         } else /*if (FS.isFile(node.mode))*/ {
-          attr.size = {{{ makeGetValue('node.contents', '4', 'i32') }}};
+          attr.size = {{{ makeGetValue('node.contents', '4', 'i32') }}};  // <- this line is why we need a custom getattr
         }
         attr.atime = new Date(node.timestamp);
         attr.mtime = new Date(node.timestamp);
