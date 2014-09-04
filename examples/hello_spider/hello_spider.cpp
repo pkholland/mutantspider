@@ -26,7 +26,7 @@
 /*
     Beginner's note:
     
-    The first thing called is CreateModule at the bottom of this file.
+    The first thing called is pp::CreateModule at the bottom of this file.
     Then HelloSpiderModule::CreateInstance is the next thing called
     (second to bottom of the file).  That creates the HelloSpiderInstance
     (immediately below this comment)
@@ -41,7 +41,7 @@
     processing in the browser.
     
     This HelloSpiderInstance contains a small bit of boilerplate logic, but
-    primarily implements some logic that paints a black dot where the mouse
+    primarily implements the code that paints a black dot where the mouse
     currently is.
 */
 class HelloSpiderInstance : public MS_AppInstance
@@ -217,11 +217,11 @@ private:
 
 
 /*
-    standard Module, whose CreateInstance is called during startup
+    standard MS_Module, whose CreateInstance is called during startup
     to create the Instance object which the browser interacts with.
     Mutantspider follows the Pepper design here of a two-stage
     initialization sequence.  pp::CreateModule is the first stage,
-    that Module's (this HellowSpiderModule's) CreateInstance is the
+    that MS_Module's (this HellowSpiderModule's) CreateInstance is the
     second stage.
 */
 class HelloSpiderModule : public MS_Module
@@ -235,15 +235,15 @@ public:
 
 
 /*
-    a bit of crappy, almost boilerplace code.
+    a bit of crappy, almost boilerplate code.
     
     This is the one place in mutantspider where it leaves the Pepper
-    "pp" namespace in tact, and just follows the pepper model for how
+    "pp" namespace intact, and just follows the pepper model for how
     the basic initialization works.  To be a functioning mutantspider
     component, you have to implement pp::CreateModule.  It will be called
     as the first thing during initialization of your component.  It is
-    required to return an allocated instance of a Module.  The (virtual)
-    CreateInstance method of that Module is then called to create an
+    required to return an allocated instance of an MS_Module.  The (virtual)
+    CreateInstance method of that MS_Module is then called to create an
     Instance.  That Instance's virtual methods are then called to
     interact with the web page.
 */
