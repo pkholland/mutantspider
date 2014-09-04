@@ -5,15 +5,15 @@ by mutantspider.
 
 <b>Some Background</b>
 
-While much of the "normal" behavior of an operating system can be implmeneted in
-a web-based application, normal POSIX -like file io frequently can't.  There are
+While much of the "normal" behavior of an operating system can be implemeneted in
+a web-based application, normal POSIX-like file io frequently can't.  There are
 several reasons for this including general lack of access to the host OS file system,
-lack of "blocking" API calls like fread, and differences in the way file -like data
+lack of "blocking" API calls like fread, and differences in the way file-like data
 persists from one view of a web page to the next.
 
 While not all of these problems can be overcome completely, both Emscripten and
 Native Client contain components to partially address the difference between what
-a C, POSIX-like codebase might expect and what can realistially be implemented inside
+a C, POSIX-like codebase might expect and what can realistically be implemented inside
 of a web page.
 
 Mutantspider contains two additional file system services of its own, also aimed at
@@ -59,6 +59,14 @@ expects to be able to open and read that file when executing.  The mutantspider
 build systems has a mechanism allowing you to list all of the files of this type
 in a way that 'make' can understand, and then make available within this /resources
 subdirectory when your application runs.
+
+Somewhat like the /persistent file system, the /resources file system is RAM-based.
+All file data in /resources is present in RAM the entire time your web application
+is running.  The mechanism in mutantspider.mk essentially converts the files listed in
+RESOURCES make variable into static data in your application (static char arrays) and
+then presents access to those arrays as files inside of /persistent.  This means that
+the download of your application code that happens when a user visits your site
+includes all of the data from all of the files listed in your RESOURCES make variable.
 
 mutantspider/src/README.makefile contains information on how to use this RESOURCES
 feature in your makefile.
