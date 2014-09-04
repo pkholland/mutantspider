@@ -64,14 +64,14 @@ subdirectory when your application runs.
 Somewhat like the <code>/persistent</code> file system, the <code>/resources</code>
 file system is RAM-based.  All file data in <code>/resources</code> is present in RAM
 the entire time your web application is running.  The mechanism in mutantspider.mk
-converts the files listed in the <code>RESOURCES</code> make variable into global data
+converts the files listed in the <code>$(RESOURCES)</code> make variable into global data
 in your application - global const char arrays - and then presents access to those
 arrays as files inside of <code>/resources</code>.  This means that the download of
 your application code that happens when a user visits your site includes all of the
-data from all of the files listed in your <code>RESOURCES</code> make variable.
+data from all of the files listed in your <code>$(RESOURCES)</code> make variable.
 
 mutantspider/src/README.makefile contains information on how to use this
-<code>RESOURCES</code> feature in your makefile.
+<code>$(RESOURCES)</code> feature in your makefile.
 
 <b>This example project</b>
 
