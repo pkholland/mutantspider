@@ -916,6 +916,7 @@ var Module;
             nacl_moduleEl.setAttribute('type', 'application/x-pnacl');
             nacl_moduleEl.setAttribute('style', 'background-color:#808080;width:100%;height:100%');
             nacl_moduleEl.setAttribute('locale', navigator.language );
+            macl_moduleEl.setAttribute('has_webgl', 'true');
             nacl_moduleEl.setAttribute('local_storage', 0);	// assume failure
 
             if (params.local_storage)

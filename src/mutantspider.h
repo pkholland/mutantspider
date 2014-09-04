@@ -1533,7 +1533,11 @@
 		MS_AppInstance(MS_Instance instance)
 			: m_instance(instance)
 		{}
-		virtual bool Init(EM_InitFlags flags) { return true; };
+        
+		virtual bool Init(uint32_t argc, const char* argn[], const char* argv[])
+        {
+            return true;
+        };
 		
 		void PostMessage(const std::string& msg)
 		{

@@ -55,21 +55,17 @@ public:
                   mouse_loc_x_(0),
                   mouse_loc_y_(0)
             {}
-            
-    #if defined(__native_client__)
+    
     virtual bool Init(uint32_t argc, const char* argn[], const char* argv[])
-    #elif defined(EMSCRIPTEN)
-    virtual bool Init(EM_InitFlags flags)
-    #endif
     {
-        // even though HelloSpiderInstance doesn't do any file system code,
+        // even though HelloSpiderInstance doesn't exercise any file system code,
         // we still need to call this to complete the initialization logic.
         mutantspider::init_fs(this);
 
         return true;
     }
     
-    // called when the DOM element that this is associated changes sizes
+    // called when the DOM element that this is associated with changes sizes
     virtual void DidChangeView(const mutantspider::View& view)
     {
         if (!CreateContext(view.GetRect().size()))
@@ -79,6 +75,7 @@ public:
     }
     
     // called when an "input" event of some kind is directed at our DOM element
+    // in this example we are only tracking mouse and touch events
     virtual bool HandleInputEvent(const mutantspider::InputEvent& event)
     {
         if (event.GetType() == MS_INPUTEVENT_TYPE_MOUSEDOWN || event.GetType() == MS_INPUTEVENT_TYPE_TOUCHSTART)
@@ -124,7 +121,7 @@ public:
     }
     
     // function to create our "context" object (the graphic object we
-    // use to display on the web page)
+    // use to display our bitmap on the web page)
     bool CreateContext(const mutantspider::Size& new_size)
     {
         const bool kIsAlwaysOpaque = true;
@@ -147,7 +144,7 @@ public:
         // get the rgb vs. bgr layout that is optimal for this system
         MS_ImageDataFormat format = mutantspider::ImageData::GetNativeImageDataFormat();
         
-        // allocate an image buffer in the optimal format, the size of our view
+        // allocate an image buffer in the optimal format, that is the size of our DOM element
         mutantspider::ImageData image_data(this, format, size_, false/*don't bother to init to zero*/);
 
         // get a pointer to its pixels
@@ -178,12 +175,14 @@ public:
                 int dist = (int)(sqrt(xdist*xdist + ydist*ydist));
                 if (dist > 255)
                     dist = 255;
-                    
+                
+                // construct one pixel
                 uint8_t	px[4];
                 px[ri] = dist;
                 px[gi] = px[bi] = 0;
                 px[ai] = 255;
 
+                // set it into our bitmap
                 data[offset] = *(uint32_t*)&px[0];
                 ++offset;
             }
@@ -197,10 +196,10 @@ public:
     
     // called when a previous call to context_.Flush has completed.  In a multi-threaded
     // build like nacl, we don't want to try building and displaying a new bitmap until
-    // the previous one completed its display on the screen.  If a new mouse event comes
+    // the previous one completed its display to the screen.  If a new mouse event comes
     // in between the time we requested that it be displayed (our call to context_.Flush)
     // and the time it completes its display (when this BlitDone is called), then we just
-    // skip trying to update and display the bitmap.
+    // skip trying to update and display the bitmap.  See blitting_ testing in HandleInputEvent
     void BlitDone(uint32_t)
     {
         blitting_ = false;

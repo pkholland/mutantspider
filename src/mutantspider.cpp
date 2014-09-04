@@ -40,7 +40,9 @@ void MS_Init(int init_flags)
 {
 	gModule = pp::CreateModule();
 	gAppInstance = gModule->CreateInstance(0);
-	gAppInstance->Init((EM_InitFlags)init_flags);
+    const char* argn = "has_webgl";
+    const char* argv = (init_flags & MS_FLAGS_WEBGL_SUPPORT) ? "true" : "false";
+	gAppInstance->Init(1, &argn, &argv);
 }
 
 int MS_MouseProc( int eventType, int timeStamp, int modifiers, int button, int positionX, int positionY, int clickCount, int movementX, int movementY )
