@@ -1,3 +1,5 @@
+<b>Hello Spider</b>
+
 simple example of using mutantspider tools to build a web page that contains an element
 that is handled by some C++ code.
 
