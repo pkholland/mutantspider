@@ -63,9 +63,9 @@ subdirectory when your application runs.
 Somewhat like the /persistent file system, the /resources file system is RAM-based.
 All file data in /resources is present in RAM the entire time your web application
 is running.  The mechanism in mutantspider.mk essentially converts the files listed in
-RESOURCES make variable into static data in your application (static char arrays) and
-then presents access to those arrays as files inside of /persistent.  This means that
-the download of your application code that happens when a user visits your site
+the RESOURCES make variable into static data in your application (static char arrays)
+and then presents access to those arrays as files inside of /persistent.  This means
+that the download of your application code that happens when a user visits your site
 includes all of the data from all of the files listed in your RESOURCES make variable.
 
 mutantspider/src/README.makefile contains information on how to use this RESOURCES
