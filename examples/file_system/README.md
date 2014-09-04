@@ -29,10 +29,10 @@ as particular locations within the normal filesystem.  These two locations are:
     /persistent
 
 Files within the /persistent subdirectory persist from one page view to the next.
-So, for example, the file /persistent/my_credentials.txt could be used to store
+So, for example, the file <code>/persistent/my_credentials.txt</code> could be used to store
 information that a user might have entered during a previous visit to your web app.
 If they had done so, and your application had written that information to this file
-then you would be able to read it in this visit to your page.  This data is stored
+then you would be able to read it during this visit to your page.  This data is stored
 locally on the user's machine - not on your server.
 
 It is implemented using IndexedDB on Emscripten, and html5fs on NaCl, but adds some
@@ -40,7 +40,7 @@ behavior on top of those tools.  Emscripten contains a file system named IDBFS w
 is similar to the /persistent file system.  But IDBFS requires an explicit "synchronize"
 call to transfer file data from the file system to the persistent storage.  Mutantspider's
 implementation automatically transfers all changed data to the persistent storage,
-making it behave much more like a normal POSIX system.
+making it behave much more like a normal POSIX file system.
 
 Google's html5fs does not require IDBFS's "synchronize" call, but can only be called
 off of the main thread.  Mutantspider's /persistent file system can be accessed from
@@ -54,16 +54,16 @@ persists changes to the underlying html5fs file system (using a background threa
 data that you might have in a file when developing your application, and your code
 expects to be able to open and read that file when executing.  The mutantspider
 build systems has a mechanism allowing you to list all of the files of this type
-in a way that 'make' can understand, and then make available within the /resources
+in a way that 'make' can understand, and then make available within this /resources
 subdirectory when your application runs.
 
-The src/README.makefile contains information on how to use this RESOURCES feature in
-your makefile.
+mutantspider/src/README.makefile contains information on how to use this RESOURCES
+feature in your makefile.
 
 <b>This example project</b>
 
-This example project builds the test and verification code both of the file systems
+This example project builds the test and verification code for both of the file systems
 that mutantspider implements.  You build and run this project the same way you do
 for the hello_spider example.  The visual result of the web page is mostly just telling
 you whether all tests passed, or if not, which ones failed.  But you can use the
-source code in the is example to see how these services are intended to work.
+source code in this example to see how these services are intended to be used.
