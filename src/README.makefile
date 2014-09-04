@@ -36,19 +36,9 @@ include mutantspider.mk
 BUILD_NAME:=myApp
 
 #
-# create build/dependency rules for all sources and all compilers
+# create the build/dependency rules for all sources, in all compilers
 #
-$(foreach src,$(SOURCES),$(eval $(call ms.COMPILE_RULE,$(src),$(INC_DIRS))))
-
-#
-# create build/dependency rules for all of the nacl targets
-#
-$(eval $(call ms.NACL_LINKER_RULE,$(BUILD_NAME),$(SOURCES)))
-
-#
-# create a build/dependency rule for the asm.js targets
-#
-$(eval $(call ms.EM_LINKER_RULE,$(BUILD_NAME),$(SOURCES)))
+$(eval $(call ms.DEFAULT_BUILD_RULES,$(BUILD_NAME),$(SOURCES),$(INC_DIRS)))
 
 #
 # cause the 'all' target to build all targets defined by mutantspider.mk
