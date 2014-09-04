@@ -57,9 +57,9 @@ exits or navigates away from your page.
 "Resources" are mutantspider's term for files like icons, menu strings, and other
 data that you might have in a file when developing your application, and your code
 expects to be able to open and read that file when executing.  The mutantspider
-build systems has a mechanism allowing you to list all of the files of this type
-in a way that 'make' can understand, and then make available within this
-<code>/resources</code> subdirectory when your application runs.
+build systems has a mechanism allowing you to list all such files in a way that 'make'
+can understand, and then make available within this <code>/resources</code>
+subdirectory when your application runs.
 
 Somewhat like the <code>/persistent</code> file system, the <code>/resources</code>
 file system is RAM-based.  All file data in <code>/resources</code> is present in RAM
