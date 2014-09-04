@@ -24,32 +24,32 @@ operations to work.
 <b>Mutantspider's two file systems</b>
 
 From the perspective of the C code, both of mutantspider's file systems are accessed
-as particular locations within the normal filesystem.  These two locations are:
+as special locations within the normal file system.  These two locations are:
 
     /persistent
 
-Files within the /persistent subdirectory persist from one page view to the next.
-So, for example, the file <code>/persistent/my_credentials.txt</code> could be used to store
-information that a user might have entered during a previous visit to your web app.
-If they had done so, and your application had written that information to this file
-then you would be able to read it during this visit to your page.  This data is stored
-locally on the user's machine - not on your server.
+Files within the <code>/persistent</code> subdirectory persist from one page view to
+the next. So, for example, the file <code>/persistent/my_credentials.txt</code> could
+be used to store information that a user might have entered during a previous visit to
+your web site.  If they had done so, and your application had written that information
+to this file then it would be able to read the information back during this visit to
+your page.  This data is stored locally on the user's machine - not on your server.
 
 It is implemented using IndexedDB on Emscripten, and html5fs on NaCl, but adds some
 behavior on top of those tools.  Emscripten contains a file system named IDBFS which
-is similar to the /persistent file system.  But IDBFS requires an explicit "synchronize"
-call to transfer file data from the file system to the persistent storage.  Mutantspider's
-implementation automatically transfers all changed data to the persistent storage,
-making it behave much more like a normal POSIX file system.
+is similar to the <code>/persistent</code> file system.  But IDBFS requires an explicit
+"synchronize" call to transfer file data from the file system to the persistent storage.
+Mutantspider's implementation automatically transfers all changed data to the
+persistent storage, making it behave much more like a normal POSIX file system.
 
 Google's html5fs does not require IDBFS's "synchronize" call, but can only be called
-off of the main thread.  Mutantspider's /persistent file system can be accessed from
-any thread.  But this comes with the cost of requiring that all data in this file system
-be replicated in RAM.  So this is essentially a RAM-based file system that automatically
-persists changes to the underlying html5fs file system (using a background thread).
-All data in this file system from previous visits to your web page will be loaded into
-RAM when the new visit starts, and will stay in RAM until the user exits or navigates
-away from your page.
+off of the main thread.  Mutantspider's <code>/persistent</code> file system can be
+accessed from any thread.  But this comes with the cost of requiring that all data in
+this file system be replicated in RAM.  So this is essentially a RAM-based file system
+that automatically persists changes to the underlying html5fs file system (using a
+background thread).  All data in this file system from previous visits to your web page
+will be loaded into RAM when the new visit starts, and will stay in RAM until the user
+exits or navigates away from your page.
 
     /resources
     
@@ -57,16 +57,17 @@ away from your page.
 data that you might have in a file when developing your application, and your code
 expects to be able to open and read that file when executing.  The mutantspider
 build systems has a mechanism allowing you to list all of the files of this type
-in a way that 'make' can understand, and then make available within this /resources
-subdirectory when your application runs.
+in a way that 'make' can understand, and then make available within this
+<code>/resources</code> subdirectory when your application runs.
 
-Somewhat like the /persistent file system, the /resources file system is RAM-based.
-All file data in /resources is present in RAM the entire time your web application
-is running.  The mechanism in mutantspider.mk essentially converts the files listed in
-the RESOURCES make variable into static data in your application (static char arrays)
-and then presents access to those arrays as files inside of /persistent.  This means
-that the download of your application code that happens when a user visits your site
-includes all of the data from all of the files listed in your RESOURCES make variable.
+Somewhat like the <code>/persistent</code> file system, the <code>/resources</code>
+file system is RAM-based.  All file data in <code>/resources</code> is present in RAM
+the entire time your web application is running.  The mechanism in mutantspider.mk
+converts the files listed in the RESOURCES make variable into static data in your
+application (static char arrays) and then presents access to those arrays as files
+inside of <code>/persistent</code>.  This means that the download of your application
+code that happens when a user visits your site includes all of the data from all of the
+files listed in your RESOURCES make variable.
 
 mutantspider/src/README.makefile contains information on how to use this RESOURCES
 feature in your makefile.
