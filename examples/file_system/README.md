@@ -6,10 +6,10 @@ by mutantspider.
 <b>Some Background</b>
 
 While much of the "normal" behavior of an operating system can be implemeneted in
-a web-based application, normal POSIX-like file io frequently can't.  There are
+a web-based application, normal POSIX-like file i/o frequently can't.  There are
 several reasons for this including general lack of access to the host OS file system,
-lack of "blocking" API calls like fread, and differences in the way file-like data
-persists from one view of a web page to the next.
+lack of "blocking" API calls like <code>fread</code>, and differences in the way
+file-like data persists from one view of a web page to the next.
 
 While not all of these problems can be overcome completely, both Emscripten and
 Native Client contain components to partially address the difference between what
@@ -17,8 +17,8 @@ a C, POSIX-like codebase might expect and what can be realistically implemented 
 of a web page.
 
 Mutantspider contains two additional file system services of its own, also aimed at
-reducing this difference.  The basic idea for all of these is that code that can live
-with certain restrictions and/or compromises can otherwise get POSIX-based file io
+reducing these differences.  The basic idea for all of these is that code that can live
+with certain restrictions and/or compromises can otherwise get POSIX-based file i/o
 operations to work.
 
 <b>Mutantspider's two file systems</b>
@@ -32,7 +32,7 @@ Files within the <code>/persistent</code> subdirectory persist from one page vie
 the next. So, for example, the file <code>/persistent/my_credentials.txt</code> could
 be used to store information that a user might have entered during a previous visit to
 your web site.  If they had done so, and your application had written that information
-to this file then it would be able to read the information back during this visit to
+to this file, then it would be able to read that information back during this visit to
 your page.  This data is stored locally on the user's machine - not on your server.
 
 It is implemented using IndexedDB on Emscripten, and html5fs on NaCl, but adds some
@@ -47,7 +47,7 @@ Google's html5fs does not require IDBFS's "synchronize" call, but can only be ca
 off of the main thread.  Mutantspider's <code>/persistent</code> file system can be
 accessed from any thread.  But this comes with the cost of requiring that all data in
 this file system be replicated in RAM.  So this is essentially a RAM-based file system
-that automatically persists changes to the underlying html5fs file system (using a
+that automatically persists all changes to the underlying html5fs file system (using a
 background thread).  All data in this file system from previous visits to your web page
 will be loaded into RAM when the new visit starts, and will stay in RAM until the user
 exits or navigates away from your page.
