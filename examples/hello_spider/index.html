@@ -19,8 +19,8 @@
   event the <code>mouse_loc_x_</code> and <code>mouse_loc_y_</code> member variables are
   upated from the event information passed in by the browser.  Then a call to <code>Paint</code>
   is issued.  <code>Paint</code> walks all pixels, computing the distance from that pixel
-  to the point <code>&#60mouse_loc_x_, mouse_loc_y_&#62</code>, clipping this value to no more
-  than 255.  The red component of the pixel in question is then set to this distance, and the
+  to the point <code>&#60mouse_loc_x_, mouse_loc_y_&#62</code>, clipping this distance value to no
+  more than 255.  The red component of the pixel in question is then set to this distance, and the
   other components (green and blue) are set to 0.  Once the entire bitmap is painted this way
   it issues a call to display the bitmap.</p>
   <div id="black_dot" style="width:600px;height:400px"></div>
