@@ -62,7 +62,6 @@ var Module;
  
                 if (starts_with(msg,'async_startup_complete:'))
                 {
-                    send_command({cmd: 'post_asyncfs_init'});
                     main_on_status({status: 'running', exe_type: exe_type, using_web_gl: using_web_gl});
                     return;
                 }

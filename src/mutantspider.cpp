@@ -174,6 +174,12 @@ void MS_DoCallbackProc(void (*proc)(void*, int32_t), void* user_data, int32_t re
 	proc(user_data, result);
 }
 
+void MS_AsyncStartupComplete()
+{
+    if (gAppInstance)
+        gAppInstance->AsyncStartupComplete();
+}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////

@@ -24,5 +24,5 @@
 
 #include "mutantspider.h"
 
-void resource_tests(MS_AppInstance* inst);
+std::pair<int,int> resource_tests(MS_AppInstance* inst);
 

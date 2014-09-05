@@ -246,7 +246,7 @@ LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 # If your build needs some additional symbols exported in the emcc build, you can add them by defining them
 # in ms.EM_EXPORTS
 #
-ms.EM_EXPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_main'
+ms.EM_EXPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_MS_AsyncStartupComplete', '_main'
 
 #
 # the projects we are interested produce smaller files if memory-init-file is turned on.  We also add some standard asm.js library stuff

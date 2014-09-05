@@ -8,6 +8,14 @@
   <title>File System Test</title>
   <script type="text/javascript" src="mutantspider.js"></script>
   <script type="text/javascript" src="file_system_boot.js"></script>
+  <style>
+  .error {
+	color: #c00000
+  }
+  .heading {
+    font-weight: bold
+  }
+  </style>
 </head>
 <body>
   <h1>File System Test</h1>
@@ -16,6 +24,25 @@
   it runs on your system (or the first time it runs after you have cleared your browser's history cache)
   the browser may tell you the page is requesting permission to store data locally.  Clicking "ok" or
   "yes" will allow the test to run correctly.</p>
-  <div id="fs_test" style="width:600px;height:0px"></div>
+  <p>The "persistent" tests exercise your browser's logic for storing information locally across page
+  views.  Each time you reload this page it checks for data that it might have written during a previous
+  view of this page.  If it finds it, it validates that it is correct and then deletes it.  If it doesn't
+  find it, it writes it.  So it flips back and forth between the two states each time you view the page.
+  The logic is based on the html5 'IndexedDB' service for a javascript build, and Google's 'html5fs'
+  service on a PNaCl build.  You can see which build you are running in the 'Status' field at the top
+  of this page.  If your browser doesn't support PNaCl, and doesn't support IndexedDB then the test will
+  fail.</p>
+  <p>The "resource" tests exercise the build system's ability to copy resource-like files from the build
+  machine, into the executable itself in such a way that the code can access the files using standard
+  <code>fopen</code> and <code>fread</code> calls.  You can read about how this feature works in the
+  <code>mutantspider/src/README.makefile</code> file - search for "Resources".</p>
+  <p>The lines below this are the test that is being tried.  If the line is normal, black text then that
+  test passed.  In many cases the code is testing something which is supposed to <i>not</i> work - for
+  example writing to a read-only file.  In these cases the test is verifying that the operation failed
+  and set errno correctly.  If a line is printed in <span class="error">red</span> then it indicates that
+  that test failed.  <span class="heading">Bold</span> lines are usually just information about the state
+  of the testing itself.  Thes are not tests themselves.</p>
+  <div id="fs_test" style="width:100%;height:1px"></div>
+  <div id="test_output" style="margin-top:30px;font-family:monospace"></div>
 </body>
 </html>

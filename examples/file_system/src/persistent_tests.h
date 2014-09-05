@@ -24,5 +24,5 @@
 
 #include "mutantspider.h"
 
-void persistent_tests(MS_AppInstance* inst);
+std::pair<int,int> persistent_tests(MS_AppInstance* inst);
 

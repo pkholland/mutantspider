@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
         else if (info.status == 'running')
             updateStatus('RUNNING ' + info.exe_type);
         else if (info.status == 'message')
-            console.log(info.message);
+            document.getElementById('test_output').innerHTML += info.message + '<br>';
         else if (info.status == 'error')
             updateStatus('ERROR: ' + info.message);
         else if (info.status == 'crash')

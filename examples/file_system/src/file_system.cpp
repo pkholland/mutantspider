@@ -24,6 +24,8 @@
 #include "persistent_tests.h"
 #include "resource_tests.h"
 
+#include <sys/stat.h>
+
 /*
     Beginner's note:
     
@@ -66,31 +68,28 @@ public:
         persistent_dirs.push_back("file_system_example");
         mutantspider::init_fs(this, persistent_dirs);
 
-        // start the initialization
-        mutantspider::init_fs(this);
-
         return true;
     }
     
-    void HandleMessage(const mutantspider::Var& var_message)
+    virtual void AsyncStartupComplete()
     {
-		if (var_message.is_dictionary())
-		{
-			mutantspider::VarDictionary dict_message(var_message);
-			mutantspider::Var var_command = dict_message.Get("cmd");
-			if (var_command.is_string())
-			{
-				auto cmd = var_command.AsString();
-				if (cmd == "post_asyncfs_init")
-				{
-					// file system, and in particular the _async_ persistent part,
-                    // is now ready to use.  So start the testing code.
-                    PostMessage("Async File Initialization Complete, starting tests");
-                    persistent_tests(this);
-                    resource_tests(this);
-				}
-            }
-        }
+//mkdir("/persistent", 0777);
+//mkdir("/persistent/file_system_example", 0777);
+        // file system, and in particular the _async_ persistent part,
+        // is now ready to use.  So start the testing code.
+        int num_tests_run = 0;
+        int num_tests_failed = 0;
+        
+        auto ret = persistent_tests(this);
+        num_tests_run += ret.first;
+        num_tests_failed += ret.second;
+        
+        ret = resource_tests(this);
+        num_tests_run += ret.first;
+        num_tests_failed += ret.second;
+        
+        PostMessage("");
+        PostMessage("File System Tests Completed: " + std::to_string(num_tests_run) + " tests run, " + std::to_string(num_tests_failed) + " tests failed");
     }
 
 };

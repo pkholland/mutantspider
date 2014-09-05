@@ -78,12 +78,12 @@ std::string html5_shadow_name = "/.html5fs_shadow";
 std::string mem_shadow_name = "/.memfs_shadow";
 
 // data structures we use to coordinate tasks on the background thread
-std::list<std::pair<void (*)(void*), void*> >   pbmemsf_task_list;
-std::mutex                                      pbmemsf_mtx;
-std::condition_variable                         pbmemsf_cnd;
+std::list<std::pair<void (*)(void*), void*> >   pbmemfs_task_list;
+std::mutex                                      pbmemfs_mtx;
+std::condition_variable                         pbmemfs_cnd;
 
 // thread proc that runs forever, waiting for new "tasks"
-// to show up in the pbmemsf_task_list.  It executes them
+// to show up in the pbmemfs_task_list.  It executes them
 // when it gets them.
 void pbmemfs_worker()
 {
@@ -91,10 +91,10 @@ void pbmemfs_worker()
     {
         std::pair<void (*)(void*), void*> task;
         {
-            std::unique_lock<std::mutex> lk(pbmemsf_mtx);
-            pbmemsf_cnd.wait(lk, []{return !pbmemsf_task_list.empty();});
-            task = pbmemsf_task_list.front();
-            pbmemsf_task_list.pop_front();
+            std::unique_lock<std::mutex> lk(pbmemfs_mtx);
+            pbmemfs_cnd.wait(lk, []{return !pbmemfs_task_list.empty();});
+            task = pbmemfs_task_list.front();
+            pbmemfs_task_list.pop_front();
         }
         task.first(task.second);
     }
@@ -102,7 +102,7 @@ void pbmemfs_worker()
 
 // given an arbitrary callable function 'f', along with an arbitrary
 // list of (copyable) arguments, add a task that will execute
-// "f(args...)", to pbmemsf_task_list and then signal pbmemfs_worker
+// "f(args...)", to pbmemfs_task_list and then signal pbmemfs_worker
 // to pick up and execute that task.
 //
 // for example:
@@ -118,8 +118,8 @@ auto bkg_call(F&& f, Args&&... args) -> typename std::result_of<F (Args...)>::ty
     using function_type = decltype(b);
     auto p = new function_type(b);
     
-    std::unique_lock<std::mutex> lk(pbmemsf_mtx);
-    pbmemsf_task_list.push_back(std::make_pair<void (*)(void*), void*>(
+    std::unique_lock<std::mutex> lk(pbmemfs_mtx);
+    pbmemfs_task_list.push_back(std::make_pair<void (*)(void*), void*>(
         [] (void* _f)
         {
             function_type* f = static_cast<function_type*>(_f);
@@ -127,7 +127,7 @@ auto bkg_call(F&& f, Args&&... args) -> typename std::result_of<F (Args...)>::ty
             delete f;
         }, p)
                             );
-    pbmemsf_cnd.notify_one();
+    pbmemfs_cnd.notify_one();
 }
 
 // simple data structure for when we need to keep track
@@ -188,18 +188,18 @@ int get_fd(struct fuse_file_info* finfo)
 ///////////////////////////////////////////////////////////
 
 // Called when a filesystem of this type is initialized.
-void* pbmemsf_init(struct fuse_conn_info* conn)
+void* pbmemfs_init(struct fuse_conn_info* conn)
 {
     return 0;
 }
 
 // Called when a filesystem of this type is unmounted.
-void pbmemsf_destroy(void* p)
+void pbmemfs_destroy(void* p)
 {
 }
 
 // Called by access()
-int pbmemsf_access(const char* path, int mode)
+int pbmemfs_access(const char* path, int mode)
 {
     return access((mem_shadow_name + path).c_str(),mode);
 }
@@ -215,7 +215,7 @@ void _open(std::string path, mode_t mode, file_ref* fr)
 }
 
 // Called when O_CREAT is passed to open()
-int pbmemsf_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
+int pbmemfs_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
 {
     std::string path(_path);
     int fd = open((mem_shadow_name + path).c_str(),O_CREAT | O_RDWR);
@@ -231,7 +231,7 @@ int pbmemsf_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* fi
 // Called by stat()/fstat(), but only when fuse_operations.fgetattr is NULL.
 // Also called by open() to determine if the path is a directory or a regular
 // file.
-int pbmemsf_getattr(const char* path, struct stat* st)
+int pbmemfs_getattr(const char* path, struct stat* st)
 {
     if (stat((mem_shadow_name + path).c_str(), st) == 0)
         return 0;
@@ -239,7 +239,7 @@ int pbmemsf_getattr(const char* path, struct stat* st)
 }
 
 // Called by fstat()
-int pbmemsf_fgetattr(const char* path, struct stat* st, struct fuse_file_info* finfo)
+int pbmemfs_fgetattr(const char* path, struct stat* st, struct fuse_file_info* finfo)
 {
     if (finfo->fh != 0)
     {
@@ -248,11 +248,11 @@ int pbmemsf_fgetattr(const char* path, struct stat* st, struct fuse_file_info* f
         return -errno;
     }
     else
-        return pbmemsf_getattr(path, st);
+        return pbmemfs_getattr(path, st);
 }
 
 // Called by fsync(). The datasync paramater is not currently supported.
-int pbmemsf_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
+int pbmemfs_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
 {
     // this can be a no-op for us, we always sync when
     // the io operation happens
@@ -260,7 +260,7 @@ int pbmemsf_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
 }
 
 // Called by ftruncate()
-int pbmemsf_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
+int pbmemfs_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
 {
     if (ftruncate(get_fd(finfo), pos) == 0)
     {
@@ -276,7 +276,7 @@ int pbmemsf_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo
 }
 
 // Called by mkdir()
-int pbmemsf_mkdir(const char* _path, mode_t mode)
+int pbmemfs_mkdir(const char* _path, mode_t mode)
 {
     std::string path(_path);
     if (mkdir((mem_shadow_name + path).c_str(), mode) == 0)
@@ -299,14 +299,14 @@ int pbmemsf_mkdir(const char* _path, mode_t mode)
 //
 // But this comment is incorrect -- this is only called if fuse_operations.create
 // _is_ NULL.  We set 'create' to pbmemfs_create, and so this will never be called.
-int pbmemsf_mknod(const char* path, mode_t mode, dev_t dev)
+int pbmemfs_mknod(const char* path, mode_t mode, dev_t dev)
 {
-    printf("shouldn't be here!!!  pbmemsf_mknod(\"%s\", %d, %d)\n", path, (int)mode, (int)dev);
+    printf("shouldn't be here!!!  pbmemfs_mknod(\"%s\", %d, %d)\n", path, (int)mode, (int)dev);
     return -1;
 }
 
 // Called by open()
-int pbmemsf_open(const char* _path, struct fuse_file_info* finfo)
+int pbmemfs_open(const char* _path, struct fuse_file_info* finfo)
 {
     std::string path(_path);
     int fd = open((mem_shadow_name + path).c_str(),O_RDWR);
@@ -320,13 +320,13 @@ int pbmemsf_open(const char* _path, struct fuse_file_info* finfo)
 }
 
 // Called by getdents(), which is called by the more standard functions
-// opendir()/readdir().  NaCl's fuse implementation calls our pbmemsf_readdir
+// opendir()/readdir().  NaCl's fuse implementation calls our pbmemfs_readdir
 // once for each file/dir being enumerated.  So we just call opendir
-// here, keep the DIR*, and then call readdir (once) in our pbmemsf_readdir.
-// Unfortunately, NaCl calls this function (pbmemsf_opendir) once for each
+// here, keep the DIR*, and then call readdir (once) in our pbmemfs_readdir.
+// Unfortunately, NaCl calls this function (pbmemfs_opendir) once for each
 // file/dir too, so we test to see whether we have already done the opendir
 // step.
-int pbmemsf_opendir(const char* path, struct fuse_file_info* finfo)
+int pbmemfs_opendir(const char* path, struct fuse_file_info* finfo)
 {
     if (finfo->fh == 0)
         finfo->fh = reinterpret_cast<decltype(finfo->fh)>(opendir((mem_shadow_name + path).c_str()));
@@ -336,7 +336,7 @@ int pbmemsf_opendir(const char* path, struct fuse_file_info* finfo)
 // Called by read(). Note that FUSE specifies that all reads will fill the
 // entire requested buffer. If this function returns less than that, the
 // remainder of the buffer is zeroed.
-int pbmemsf_read(const char* path, char* buf, size_t count, off_t pos,
+int pbmemfs_read(const char* path, char* buf, size_t count, off_t pos,
              struct fuse_file_info* finfo)
 {
     size_t bytesRead = 0;
@@ -353,10 +353,10 @@ int pbmemsf_read(const char* path, char* buf, size_t count, off_t pos,
 }
 
 // (big, long comment from fuse.h omitted)
-int pbmemsf_readdir(const char* path, void* buf, fuse_fill_dir_t filldir, off_t pos,
+int pbmemfs_readdir(const char* path, void* buf, fuse_fill_dir_t filldir, off_t pos,
                 struct fuse_file_info* finfo)
 {
-    DIR* dir = (DIR*)finfo->fh; // see pbmemsf_opendir
+    DIR* dir = (DIR*)finfo->fh; // see pbmemfs_opendir
     
     struct dirent *ent = readdir(dir);
     if (ent)
@@ -372,7 +372,7 @@ int pbmemsf_readdir(const char* path, void* buf, fuse_fill_dir_t filldir, off_t 
 // Called when the last reference to this node is released. This is only
 // called for regular files. For directories, fuse_operations.releasedir is
 // called instead.
-int pbmemsf_release(const char* path, struct fuse_file_info* finfo)
+int pbmemfs_release(const char* path, struct fuse_file_info* finfo)
 {
     if (close(get_fd(finfo)) == 0)
     {
@@ -393,9 +393,9 @@ int pbmemsf_release(const char* path, struct fuse_file_info* finfo)
 // Called when the last reference to this node is released. This is only
 // called for directories. For regular files, fuse_operations.release is
 // called instead.
-int pbmemsf_releasedir(const char* path, struct fuse_file_info* finfo)
+int pbmemfs_releasedir(const char* path, struct fuse_file_info* finfo)
 {
-    // see pbmemsf_opendir
+    // see pbmemfs_opendir
     if (finfo->fh)
     {
         closedir((DIR*)finfo->fh);
@@ -406,7 +406,7 @@ int pbmemsf_releasedir(const char* path, struct fuse_file_info* finfo)
 }
 
 // Called by rename()
-int pbmemsf_rename(const char* _path, const char* _new_path)
+int pbmemfs_rename(const char* _path, const char* _new_path)
 {
     std::string path(_path);
     std::string new_path(_new_path);
@@ -425,7 +425,7 @@ int pbmemsf_rename(const char* _path, const char* _new_path)
 }
 
 // Called by rmdir()
-int pbmemsf_rmdir(const char* _path)
+int pbmemfs_rmdir(const char* _path)
 {
     std::string path(_path);
     if (rmdir((mem_shadow_name + path).c_str()) == 0)
@@ -442,7 +442,7 @@ int pbmemsf_rmdir(const char* _path)
 }
 
 // Called by truncate(), as well as open() when O_TRUNC is passed.
-int pbmemsf_truncate(const char* _path, off_t pos)
+int pbmemfs_truncate(const char* _path, off_t pos)
 {
     std::string	path(_path);
     if (truncate((mem_shadow_name + path).c_str(),pos) == 0)
@@ -459,7 +459,7 @@ int pbmemsf_truncate(const char* _path, off_t pos)
 }
 
 // Called by unlink()
-int pbmemsf_unlink(const char* _path)
+int pbmemfs_unlink(const char* _path)
 {
     std::string path(_path);
     if (unlink((mem_shadow_name + path).c_str()) == 0)
@@ -477,7 +477,7 @@ int pbmemsf_unlink(const char* _path)
 
 // Called by write(). Note that FUSE specifies that a write should always
 // return the full count, unless an error occurs.
-int pbmemsf_write(const char* path, const char* buf, size_t count, off_t pos,
+int pbmemfs_write(const char* path, const char* buf, size_t count, off_t pos,
               struct fuse_file_info* finfo)
 {
     int ret = pwrite(get_fd(finfo), buf, count, pos);
@@ -494,32 +494,32 @@ int pbmemsf_write(const char* path, const char* buf, size_t count, off_t pos,
 }
 
 // the data structure we give to fuse
-struct fuse_operations pbmemsf_ops = {
+struct fuse_operations pbmemfs_ops = {
     
     0,
     0,
     
-    pbmemsf_init,
-    pbmemsf_destroy,
-    pbmemsf_access,
-    pbmemsf_create,
-    pbmemsf_fgetattr,
-    pbmemsf_fsync,
-    pbmemsf_ftruncate,
-    pbmemsf_getattr,
-    pbmemsf_mkdir,
-    pbmemsf_mknod,
-    pbmemsf_open,
-    pbmemsf_opendir,
-    pbmemsf_read,
-    pbmemsf_readdir,
-    pbmemsf_release,
-    pbmemsf_releasedir,
-    pbmemsf_rename,
-    pbmemsf_rmdir,
-    pbmemsf_truncate,
-    pbmemsf_unlink,
-    pbmemsf_write
+    pbmemfs_init,
+    pbmemfs_destroy,
+    pbmemfs_access,
+    pbmemfs_create,
+    pbmemfs_fgetattr,
+    pbmemfs_fsync,
+    pbmemfs_ftruncate,
+    pbmemfs_getattr,
+    pbmemfs_mkdir,
+    pbmemfs_mknod,
+    pbmemfs_open,
+    pbmemfs_opendir,
+    pbmemfs_read,
+    pbmemfs_readdir,
+    pbmemfs_release,
+    pbmemfs_releasedir,
+    pbmemfs_rename,
+    pbmemfs_rmdir,
+    pbmemfs_truncate,
+    pbmemfs_unlink,
+    pbmemfs_write
 };
 
 // copy the contents of 'from' to 'to'
@@ -619,7 +619,8 @@ void populate_memfs(MS_AppInstance* inst, std::vector<std::string> persistent_di
         mkdir_p(mem_shadow_name + "/" + dir);
         do_sync(dir);
     }
-    
+   
+    inst->AsyncStartupComplete();
     inst->PostCommand("async_startup_complete:");
     
     pbmemfs_worker();   // note, this never returns
@@ -729,14 +730,14 @@ int rezfs_access(const char* path, int mode)
     if (!ent)
         return -ENOENT;
     if (ent->is_dir || ((mode & O_ACCMODE) != O_RDONLY))
-        return -EPERM;
+        return -EACCES;
     return 0;
 }
 
 // Called when O_CREAT is passed to open()
 int rezfs_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 int rezfs_setattr(const mutantspider::rez_dir_ent* ent, struct stat* st)
@@ -783,13 +784,13 @@ int rezfs_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
 // Called by ftruncate()
 int rezfs_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Called by mkdir()
 int rezfs_mkdir(const char* _path, mode_t mode)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Here is the comment in fuse.h from pepper35:
@@ -801,7 +802,7 @@ int rezfs_mkdir(const char* _path, mode_t mode)
 // _is_ NULL.  We set 'create' to rezfs_create, and so this will never be called.
 int rezfs_mknod(const char* path, mode_t mode, dev_t dev)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Called by open()
@@ -931,25 +932,25 @@ int rezfs_releasedir(const char* path, struct fuse_file_info* finfo)
 // Called by rename()
 int rezfs_rename(const char* _path, const char* _new_path)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Called by rmdir()
 int rezfs_rmdir(const char* _path)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Called by truncate(), as well as open() when O_TRUNC is passed.
 int rezfs_truncate(const char* _path, off_t pos)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Called by unlink()
 int rezfs_unlink(const char* _path)
 {
-    return -EPERM;
+    return -EACCES;
 }
 
 // Called by write(). Note that FUSE specifies that a write should always
@@ -957,7 +958,7 @@ int rezfs_unlink(const char* _path)
 int rezfs_write(const char* path, const char* buf, size_t count, off_t pos,
               struct fuse_file_info* finfo)
 {
-    return -EPERM;
+    return -EBADF;
 }
 
 // the data structure we give to fuse
@@ -1009,10 +1010,13 @@ void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_di
     #endif
     
     if (persistent_dirs.empty())
+    {
+        inst->AsyncStartupComplete();
         inst->PostCommand("async_startup_complete:");
+    }
     else
     {
-        nacl_io_register_fs_type("persist_backed_mem_fs", &pbmemsf_ops);
+        nacl_io_register_fs_type("persist_backed_mem_fs", &pbmemfs_ops);
         
         mount("", html5_shadow_name.c_str(), "html5fs", 0, "type=PERSISTENT,expected_size=1048576");
         
@@ -1046,7 +1050,10 @@ void init_fs(MS_AppInstance* inst, const std::vector<std::string>& persistent_di
     #endif
 
     if (persistent_dirs.empty())
+    {
+        inst->AsyncStartupComplete();
         inst->PostCommand("async_startup_complete:");
+    }
     else
     {
         for (auto dir : persistent_dirs)

@@ -22,7 +22,11 @@
 
 #include "resource_tests.h"
 
-void resource_tests(MS_AppInstance* inst)
+std::pair<int,int> resource_tests(MS_AppInstance* inst)
 {
-    inst->PostMessage("running Resource File System tests");
+    //inst->PostMessage("running Resource File System tests");
+    int num_tests_run = 0;
+    int num_tests_failed = 0;
+    
+    return std::make_pair(num_tests_run, num_tests_failed);
 }

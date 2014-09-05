@@ -74,9 +74,17 @@ var LibraryMutantspider = {
       if(err)
         mutantspider.post_js_message('#command:async_startup_failed:' + err);
       else
+      {
+        ccall('MS_AsyncStartupComplete','null',[],[]);
         mutantspider.post_js_message('#command:async_startup_complete:');
+      }
     });
   },
+  ms_browser_supports_persistent_storage__sig: 'i',
+  ms_browser_supports_persistent_storage__deps: ['$IDBFS'],
+  ms_browser_supports_persistent_storage: function() {
+    return IDBFS.indexedDB() ? 1 : 0;
+  }
 };
 
 mergeInto(LibraryManager.library, LibraryMutantspider);

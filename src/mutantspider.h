@@ -47,6 +47,8 @@ extern "C" void MS_SetLocale(const char*);
 			msg += command;
 			pp::Instance::PostMessage(msg);
 		}
+        
+        virtual void AsyncStartupComplete() {}
 
 	};
 
@@ -237,6 +239,10 @@ extern "C" void MS_SetLocale(const char*);
 		{
 			pp::Module::Get()->core()->CallOnMainThread(delay_in_milliseconds,callback,result);
 		}
+        inline bool browser_supports_persistent_storage()
+        {
+            return true;
+        }
 	}
 
 #elif defined(EMSCRIPTEN)
@@ -273,6 +279,7 @@ extern "C" void MS_SetLocale(const char*);
 	extern "C" void ms_persist_mount(const char* path);
 	extern "C" void ms_rez_mount(const char* path, const mutantspider::rez_dir* root_addr);
 	extern "C" void ms_syncfs_from_persistent(void);
+    extern "C" int  ms_browser_supports_persistent_storage(void);
 
 	typedef enum {
 		MS_FLAGS_WEBGL_SUPPORT = 1
@@ -1573,6 +1580,7 @@ extern "C" void MS_SetLocale(const char*);
 		virtual void DidChangeView(const mutantspider::View& view) {};
 		virtual bool HandleInputEvent(const mutantspider::InputEvent& event) { return false; }
 		virtual void HandleMessage(const mutantspider::Var& var_message) {}
+        virtual void AsyncStartupComplete() {}
 		
 		MS_Instance getInstance() { return m_instance; }
 		
@@ -1621,6 +1629,10 @@ extern "C" void MS_SetLocale(const char*);
 		{
 			ms_timed_callback(delay_in_milliseconds,callback.get_proc(),callback.get_user_data(),result);
 		}
+        inline bool browser_supports_persistent_storage()
+        {
+            return ms_browser_supports_persistent_storage() != 0;
+        }
 	}
 
 	#include "mutantspider_js_file.h"
