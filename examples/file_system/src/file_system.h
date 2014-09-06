@@ -22,7 +22,28 @@
 
 #pragma once
 
-#include "file_system.h"
+#include "mutantspider.h"
 
-std::pair<int,int> persistent_tests(FileSystemInstance* inst);
+class FileSystemInstance : public MS_AppInstance
+{
+public:
+    explicit FileSystemInstance(MS_Instance instance);
 
+
+    virtual bool Init(uint32_t argc, const char* argn[], const char* argv[]);
+    
+    virtual void AsyncStartupComplete();
+    
+    void PostError(const std::string& message)
+    {
+        PostMessage(std::string("<span class=\"error\">") + message + "</span>");
+    }
+    
+    void PostHeading(const std::string& message)
+    {
+        PostMessage(std::string("<span class=\"heading\">") + message + "</span>");
+    }
+
+};
+
+#define LINE_PFX std::string("[") + std::to_string(__LINE__) + "] "

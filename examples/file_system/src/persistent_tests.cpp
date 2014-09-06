@@ -20,7 +20,6 @@
  THE SOFTWARE.
 */
 
-#include "mutantspider.h"
 #include "persistent_tests.h"
 #include <sys/stat.h>
 #include <dirent.h>
@@ -30,26 +29,16 @@
 
 namespace {
 
-void PostError(MS_AppInstance* inst, const std::string& message)
-{
-    inst->PostMessage(std::string("<span class=\"error\">") + message + "</span>");
-}
-
-void PostHeading(MS_AppInstance* inst, const std::string& message)
-{
-    inst->PostMessage(std::string("<span class=\"heading\">") + message + "</span>");
-}
-
 void print_indents(int numIndents)
 {
     for (int i = 0; i < numIndents; i++)
         printf("    ");
 }
 
-void clear_all_r(const std::string& dir_name, int numIndents)
+void clear_all(const std::string& dir_name, int numIndents)
 {
     print_indents(numIndents);
-    printf("clear_all_r(\"%s\")\n", dir_name.c_str());
+    printf("clear_all(\"%s\")\n", dir_name.c_str());
     DIR	*dir;
     bool unlinked;
     do {
@@ -70,7 +59,7 @@ void clear_all_r(const std::string& dir_name, int numIndents)
                         if (S_ISDIR(st.st_mode))
                         {
                             unlinked = true;
-                            clear_all_r(path, numIndents+1);
+                            clear_all(path, numIndents+1);
                          }
                         else
                         {
@@ -126,7 +115,7 @@ std::string errno_string()
 #define kReallyBigFileSize 1000000
 #define kReallyBigFileString "hotdogs and sausages and "
 
-std::pair<int,int> persistent_tests(MS_AppInstance* inst)
+std::pair<int,int> persistent_tests(FileSystemInstance* inst)
 {
     int num_tests_run = 0;
     int num_tests_failed = 0;
@@ -139,7 +128,7 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
         {
             if (S_ISDIR(st.st_mode))
             {
-                PostHeading(inst, "Persistent File Tests: Data previously stored, running validate and delete tests");
+                inst->PostHeading("Persistent File Tests: Data previously stored, running validate and delete tests");
                 
                 // there should be exactly 2 files in persistent/file_system_example/root,
                 // one named small_file and one named big_file (plus '.' and '..')
@@ -148,16 +137,16 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (dir == 0)
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("opendir(\"/persistent/file_system_example/root\") failed with errno: ") + errno_string());
+                    inst->PostError(LINE_PFX + "opendir(\"/persistent/file_system_example/root\") failed with errno: " + errno_string());
                 }
                 else
                 {
-                    inst->PostMessage("opendir(\"/persistent/file_system_example/root\")");
+                    inst->PostMessage(LINE_PFX + "opendir(\"/persistent/file_system_example/root\")");
                     struct dirent *ent;
                     while ((ent = readdir(dir)) != 0)
                     {
                         ++num_tests_run;
-                        inst->PostMessage(std::string("readdir returned \"") + ent->d_name + "\"");
+                        inst->PostMessage(LINE_PFX + "readdir returned \"" + ent->d_name + "\"");
                         if (strcmp(ent->d_name,".") && strcmp(ent->d_name,".."))
                         {
                             if (strcmp(ent->d_name,"small_file") == 0)
@@ -167,28 +156,28 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                                 if (stat("/persistent/file_system_example/root/small_file",&st) != 0)
                                 {
                                     ++num_tests_failed;
-                                    PostError(inst, std::string("stat(\"/persistent/file_system_example/root/small_file\",&st) failed with errno: ") + errno_string());
+                                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/small_file\",&st) failed with errno: " + errno_string());
                                 }
                                 else
                                 {
-                                    inst->PostMessage("stat(\"/persistent/file_system_example/root/small_file\",&st)");
+                                    inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/small_file\",&st)");
                                     ++num_tests_run;
                                     if (S_ISREG(st.st_mode))
                                     {
-                                        inst->PostMessage("S_ISREG reported \"/persistent/file_system_example/root/small_file\" as a file (not directory)");
+                                        inst->PostMessage(LINE_PFX + "S_ISREG reported \"/persistent/file_system_example/root/small_file\" as a file (not directory)");
                                         ++num_tests_run;
                                         if (st.st_size == 11)
-                                            inst->PostMessage("stat correctly reported the file size for \"/persistent/file_system_example/root/small_file\" as 11 bytes");
+                                            inst->PostMessage(LINE_PFX + "stat correctly reported the file size for \"/persistent/file_system_example/root/small_file\" as 11 bytes");
                                         else
                                         {
                                             ++num_tests_failed;
-                                            PostError(inst, std::string("stat incorrectly reported the file size for \"/persistent/file_system_example/root/small_file\" as ") + std::to_string(st.st_size) + " bytes");
+                                            inst->PostError(LINE_PFX + "stat incorrectly reported the file size for \"/persistent/file_system_example/root/small_file\" as " + std::to_string(st.st_size) + " bytes instead of 11");
                                         }
                                     }
                                     else
                                     {
                                         ++num_tests_failed;
-                                        PostError(inst, "S_ISREG incorrectly reported \"/persistent/file_system_example/root/small_file\" as something other than a file");
+                                        inst->PostError(LINE_PFX + "S_ISREG incorrectly reported \"/persistent/file_system_example/root/small_file\" as something other than a file");
                                     }
                                 }
                             }
@@ -199,28 +188,28 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                                 if (stat("/persistent/file_system_example/root/big_file",&st) != 0)
                                 {
                                     ++num_tests_failed;
-                                    PostError(inst, std::string("stat(\"/persistent/file_system_example/root/big_file\",&st) failed with errno: ") + errno_string());
+                                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/big_file\",&st) failed with errno: " + errno_string());
                                 }
                                 else
                                 {
-                                    inst->PostMessage("stat(\"/persistent/file_system_example/root/big_file\",&st)");
+                                    inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/big_file\",&st)");
                                     ++num_tests_run;
                                     if (S_ISREG(st.st_mode))
                                     {
-                                        inst->PostMessage("S_ISREG reported \"/persistent/file_system_example/root/big_file\" as a file (not directory)");
+                                        inst->PostMessage(LINE_PFX + "S_ISREG reported \"/persistent/file_system_example/root/big_file\" as a file (not directory)");
                                         ++num_tests_run;
                                         if (st.st_size == kReallyBigFileSize*strlen(kReallyBigFileString))
-                                            inst->PostMessage(std::string("stat correctly reported the file size for \"/persistent/file_system_example/root/big_file\" as ") + std::to_string(kReallyBigFileSize*strlen(kReallyBigFileString)) + " bytes");
+                                            inst->PostMessage(LINE_PFX + "stat correctly reported the file size of \"/persistent/file_system_example/root/big_file\" as " + std::to_string(kReallyBigFileSize*strlen(kReallyBigFileString)) + " bytes");
                                         else
                                         {
                                             ++num_tests_failed;
-                                            PostError(inst, std::string("stat incorrectly reported the file size for \"/persistent/file_system_example/root/big_file\" as ") + std::to_string(st.st_size) + " bytes");
+                                            inst->PostError(LINE_PFX + "stat incorrectly reported the file size of \"/persistent/file_system_example/root/big_file\" as " + std::to_string(st.st_size) + " bytes");
                                         }
                                     }
                                     else
                                     {
                                         ++num_tests_failed;
-                                        PostError(inst, "S_ISREG incorrectly reported \"/persistent/file_system_example/root/big_file\" as something other than a file");
+                                        inst->PostError(LINE_PFX + "S_ISREG incorrectly reported \"/persistent/file_system_example/root/big_file\" as something other than a file");
                                     }
                                 }
                             }
@@ -234,45 +223,45 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (truncate("/persistent/file_system_example/root/big_file",10) != 0)
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("truncate(\"/persistent/file_system_example/root/big_file\",10) failed with errno: ") + errno_string());
+                    inst->PostError(LINE_PFX + "truncate(\"/persistent/file_system_example/root/big_file\",10) failed with errno: " + errno_string());
                 }
                 else
                 {
-                    inst->PostMessage("truncate(\"/persistent/file_system_example/root/big_file\",10)");
+                    inst->PostMessage(LINE_PFX + "truncate(\"/persistent/file_system_example/root/big_file\",10)");
                     
                     ++num_tests_run;
                     struct stat st;
                     if (stat("/persistent/file_system_example/root/big_file",&st) != 0)
                     {
                         ++num_tests_failed;
-                        PostError(inst, std::string("stat(\"/persistent/file_system_example/root/big_file\",&st) failed with errno: ") + errno_string());
+                        inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/big_file\",&st) failed with errno: " + errno_string());
                     }
                     else
                     {
-                        inst->PostMessage("stat(\"/persistent/file_system_example/root/big_file\",&st)");
+                        inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/big_file\",&st)");
                     
                         ++num_tests_run;
                         if (st.st_size == 10)
-                            inst->PostMessage("stat correctly reported the new, truncated file size for \"/persistent/file_system_example/root/big_file\" as 10 bytes");
+                            inst->PostMessage(LINE_PFX + "stat correctly reported the new, truncated file size of \"/persistent/file_system_example/root/big_file\" as 10 bytes");
                         else
                         {
                             ++num_tests_failed;
-                            PostError(inst, std::string("stat incorrectly reported the file new, truncated size for \"/persistent/file_system_example/root/big_file\" as ") + std::to_string(st.st_size) + " bytes");
+                            inst->PostError(LINE_PFX + "stat incorrectly reported the file new, truncated size of \"/persistent/file_system_example/root/big_file\" as " + std::to_string(st.st_size) + " bytes");
                         }
                     }
                 }
                 
-                clear_all_r("/persistent/file_system_example/root",0);
+                clear_all("/persistent/file_system_example/root",0);
             }
             else
             {
-                PostError(inst, "/persistent/file_system_example/root exists but does not appear to be a directory, attempting to delete");
-                clear_all_r("/persistent/file_system_example/root",0);
+                inst->PostError(LINE_PFX + "/persistent/file_system_example/root exists but does not appear to be a directory, attempting to delete");
+                clear_all("/persistent/file_system_example/root",0);
             }
         }
         else
         {
-            PostHeading(inst, "Persistent File Tests: No data previously stored, running create and store tests");
+            inst->PostHeading("Persistent File Tests: No data previously stored, running create and store tests");
             
             // can we make our root directory?
             // we handle failure a little differently on this one.  If this fails we don't
@@ -281,10 +270,10 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (mkdir("/persistent/file_system_example/root",0777) != 0)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("mkdir(\"/persistent/file_system_example/root\",0777) failed with errno: ") + errno_string());
+                inst->PostError(LINE_PFX + "mkdir(\"/persistent/file_system_example/root\",0777) failed with errno: " + errno_string());
                 return std::make_pair(num_tests_run, num_tests_failed);
             }
-            inst->PostMessage("mkdir(\"/persistent/file_system_example/root\",0777)");
+            inst->PostMessage(LINE_PFX + "mkdir(\"/persistent/file_system_example/root\",0777)");
             
             // does a file which does not exist fail to open as expected?
             ++num_tests_run;
@@ -292,10 +281,10 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (fd != -1 || errno != ENOENT)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("open(\"/persistent/file_system_example/root/does_not_exist\",O_RDONLY) should have failed with errno = ENOENT, but did not.  It returned ") + std::to_string(fd) + ", and errno: " + errno_string());
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/does_not_exist\",O_RDONLY) should have failed with errno = ENOENT, but did not.  It returned " + std::to_string(fd) + ", and errno: " + errno_string());
             }
             else
-                inst->PostMessage("open(\"/persistent/file_system_example/root/does_not_exist\", O_RDONLY)");
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/does_not_exist\", O_RDONLY)");
             
             // can we create a new file?
             ++num_tests_run;
@@ -303,12 +292,12 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (fd == -1)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("open(\"/persistent/file_system_example/root/small_file\",O_RDONLY | O_CREAT, 0666) should have succeeded, but did not.  It returned -1, and errno: ") + errno_string());
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\",O_RDONLY | O_CREAT, 0666) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
             }
             else
             {
                 close(fd);
-                inst->PostMessage("open(\"/persistent/file_system_example/root/small_file\", O_RDONLY | O_CREAT, 0666)");
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\", O_RDONLY | O_CREAT, 0666)");
             }
             
             // can we open, read-only, an existing file (the one we just created above)
@@ -317,11 +306,11 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (fd == 1)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("open(\"/persistent/file_system_example/root/small_file\",O_RDONLY) should have succeeded, but did not.  It returned -1, and errno: ") + errno_string());
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\",O_RDONLY) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
             }
             else
             {
-                inst->PostMessage("open(\"/persistent/file_system_example/root/small_file\", O_RDONLY)");
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\", O_RDONLY)");
                 
                 // are we correctly blocked from writing to this file - we opened it O_RDONLY
                 ++num_tests_run;
@@ -330,10 +319,10 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (written != -1 || (errno != EBADF && errno != EACCES))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("write(read-only-fd, \"hello\", 5) should have failed with EBADF or EACCES, but did not.  It returned ") + std::to_string(written) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "write(read-only-fd, \"hello\", 5) should have failed with EBADF or EACCES, but did not.  It returned " + std::to_string(written) + ", and errno: " + errno_string());
                 }
                 else
-                     inst->PostMessage("write(read-only-fd, \"hello\", 5)");
+                     inst->PostMessage(LINE_PFX + "write(read-only-fd, \"hello\", 5)");
                 close(fd);
             }
             
@@ -346,11 +335,11 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (fd == -1)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("open(\"/persistent/file_system_example/root/small_file\",O_WRONLY) should have succeeded, but did not.  It returned -1, and errno: ") + errno_string());
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\",O_WRONLY) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
             }
             else
             {
-                inst->PostMessage("open(\"/persistent/file_system_example/root/small_file\", O_WRONLY)");
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\", O_WRONLY)");
                 
                 // are we correctly blocked from reading from this file?
                 ++num_tests_run;
@@ -359,10 +348,10 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (bytes_read != -1 || (errno != EBADF && errno != EACCES))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("read(write-only-fd, &b, 1) should have failed with errno EBADF or EACCES, but did not.  It returned ") + std::to_string(bytes_read) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "read(write-only-fd, &b, 1) should have failed with errno EBADF or EACCES, but did not.  It returned " + std::to_string(bytes_read) + ", and errno: " + errno_string());
                 }
                 else
-                    inst->PostMessage("read(write-only-fd, &b, 1)");
+                    inst->PostMessage(LINE_PFX + "read(write-only-fd, &b, 1)");
                 
                 // can we write to this file?
                 ++num_tests_run;
@@ -370,10 +359,10 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (written != strlen(hello))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("write(write-only-fd, \"hello\", 5) should have succeeded, but did not.  It returned ") + std::to_string(written) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "write(write-only-fd, \"hello\", 5) should have succeeded, but did not.  It returned " + std::to_string(written) + ", and errno: " + errno_string());
                 }
                 else
-                    inst->PostMessage("write(write-only-fd, \"hello\", 5)");
+                    inst->PostMessage(LINE_PFX + "write(write-only-fd, \"hello\", 5)");
                 close(fd);
             }
             
@@ -383,11 +372,11 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (fd == -1)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("open(\"/persistent/file_system_example/root/small_file\",O_RDWR) should have succeeded, but did not.  It returned -1, and errno: ") + errno_string());
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\",O_RDWR) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
             }
             else
             {
-                inst->PostMessage("open(\"/persistent/file_system_example/root/small_file\", O_RDWR)");
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\", O_RDWR)");
                 
                 // can we read from this file, and does it contain "hello"?
                 ++num_tests_run;
@@ -396,15 +385,15 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (bytes_read != strlen(hello))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("read(read-write-fd, &buf, sizeof(buf)) should have returned 5, but did not.  It returned ") + std::to_string(bytes_read) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "read(read-write-fd, &buf, " + std::to_string(sizeof(rd_buf)) + ") should have returned 5, but did not.  It returned " + std::to_string(bytes_read) + (bytes_read == -1 ? (std::string(", and errno: ") + errno_string()) : std::string("")));
                 }
                 else if (memcmp(rd_buf, hello, strlen(hello)) != 0)
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("read(read-write-fd, &buf, sizeof(buf)) should have read \"hello\", but did not.  It read: ") + &rd_buf[0]);
+                    inst->PostError(LINE_PFX + "read(read-write-fd, &buf, sizeof(buf)) should have read \"hello\", but did not.  It read: " + &rd_buf[0]);
                 }
                 else
-                    inst->PostMessage("read(read-write-fd, &buf, sizeof(buf))");
+                    inst->PostMessage(LINE_PFX + "read(read-write-fd, &buf, sizeof(buf))");
                 
                 // can we also write (append) to this file?
                 ++num_tests_run;
@@ -413,10 +402,10 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (written != strlen(buf))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("write(read-write-fd, \" world\", 6) should have succeeded, but did not.  It returned ") + std::to_string(written) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "write(read-write-fd, \" world\", 6) should have succeeded, but did not.  It returned " + std::to_string(written) + ", and errno: " + errno_string());
                 }
                 else
-                    inst->PostMessage("write(read-write-fd, \" world\", 6)");
+                    inst->PostMessage(LINE_PFX + "write(read-write-fd, \" world\", 6)");
                 close(fd);
             }
             
@@ -426,7 +415,7 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
             if (fd == -1)
             {
                 ++num_tests_failed;
-                PostError(inst, std::string("open(\"/persistent/file_system_example/root/big_file\",O_RDWR | O_CREAT, 0666) should have succeeded, but did not.  It returned -1, and errno: ") + errno_string());
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/big_file\",O_RDWR | O_CREAT, 0666) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
             }
             else
             {
@@ -437,11 +426,11 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                     if (bytes_written != len)
                     {
                         ++num_tests_failed;
-                        PostError(inst, std::string("write to really big file failed after writing ") + std::to_string(i*len) + " bytes");
+                        inst->PostError(LINE_PFX + "write to really big file failed after writing " + std::to_string(i*len) + " bytes");
                         break;
                     }
                 }
-                inst->PostMessage(std::string("wrote ") + std::to_string(kReallyBigFileSize*len) + " bytes to a really big file");
+                inst->PostMessage(LINE_PFX + "wrote " + std::to_string(kReallyBigFileSize*len) + " bytes to \"/persistent/file_system_example/root/big_file\"");
                 close(fd);
             }
             
@@ -449,7 +438,7 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
     }
     else
     {
-        PostError(inst, "This browser does not support persistent storage. Persistent tests will not be tried.");
+        inst->PostError(LINE_PFX + "This browser does not support persistent storage. Persistent tests will not be tried.");
     }
     
     return std::make_pair(num_tests_run, num_tests_failed);

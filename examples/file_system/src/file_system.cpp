@@ -20,79 +20,64 @@
  THE SOFTWARE.
 */
 
-#include "mutantspider.h"
+#include "file_system.h"
 #include "persistent_tests.h"
 #include "resource_tests.h"
 
 #include <sys/stat.h>
 
-/*
-    Beginner's note:
-    
-    The first thing called is pp::CreateModule at the bottom of this file.
-    Then FileSystemModule::CreateInstance is the next thing called
-    (second to bottom of the file).  That creates the FileSystemInstance
-    (immediately below this comment)
-*/
+// defining this skips the fuse-based implementation of the
+// persistent storage file system, allowing you to see what
+// the test code does when running on a "normal" file system
+//#define NO_FUSE
 
-/*
-    An instance of FileSystemInstance is created by the initialization logic
-    (pp::CreateModule()->CreateInstance()).  This instance is then associated
-    with the component on the web page that initiated this code.  Virtual methods
-    like DidChangeView and HandleInputEvent are called in response to event
-    processing in the browser.
-    
-    This FileSystemInstance initializes the mutantspider file system servers
-    in its Init method.  But this initialization is asynchronous, so it waits
-    until it has been notified of completion before executing its testing
-    logic.
-*/
-class FileSystemInstance : public MS_AppInstance
+FileSystemInstance::FileSystemInstance(MS_Instance instance)
+    : MS_AppInstance(instance)
+{}
+
+bool FileSystemInstance::Init(uint32_t argc, const char* argn[], const char* argv[])
 {
-public:
-    explicit FileSystemInstance(MS_Instance instance)
-                : MS_AppInstance(instance)
-            {}
+    // the set of directories that we want to be "persistent"
+    // that is, file io done in these directories (or subdirectories of them)
+    // will persist across page loads in the browser.  It is recommended
+    // that all such directories have a high-level directory name that is
+    // reasonably unique to the web app itself.  So here we use
+    // "file_system_example".  This will result in the directory
+    // "/persistent/file_system_example" being our main persistent directory.
+    std::vector<std::string> persistent_dirs;
+    #if !defined(NO_FUSE)
+    persistent_dirs.push_back("file_system_example");
+    #endif
+    mutantspider::init_fs(this, persistent_dirs);
 
+    return true;
+}
 
-    virtual bool Init(uint32_t argc, const char* argn[], const char* argv[])
-    {
-        // the set of directories that we want to be "persistent"
-        // that is, file io done in these directories (or subdirectories of them)
-        // will persist across page loads in the browser.  It is recommended
-        // that all such directories have a high-level directory name that is
-        // reasonably unique to the web app itself.  So here we use
-        // "file_system_example".  This will result in the directory
-        // "/persistent/file_system_example" being our main persistent directory.
-        std::vector<std::string> persistent_dirs;
-        persistent_dirs.push_back("file_system_example");
-        mutantspider::init_fs(this, persistent_dirs);
+void FileSystemInstance::AsyncStartupComplete()
+{
 
-        return true;
-    }
+    #if defined(NO_FUSE)
+    mkdir("/persistent", 0777);
+    mkdir("/persistent/file_system_example", 0777);
+    #endif
+
+    // file system, and in particular the _async_ persistent part,
+    // is now ready to use.  So start the testing code.
+    int num_tests_run = 0;
+    int num_tests_failed = 0;
     
-    virtual void AsyncStartupComplete()
-    {
-//mkdir("/persistent", 0777);
-//mkdir("/persistent/file_system_example", 0777);
-        // file system, and in particular the _async_ persistent part,
-        // is now ready to use.  So start the testing code.
-        int num_tests_run = 0;
-        int num_tests_failed = 0;
-        
-        auto ret = persistent_tests(this);
-        num_tests_run += ret.first;
-        num_tests_failed += ret.second;
-        
-        ret = resource_tests(this);
-        num_tests_run += ret.first;
-        num_tests_failed += ret.second;
-        
-        PostMessage("");
-        PostMessage("File System Tests Completed: " + std::to_string(num_tests_run) + " tests run, " + std::to_string(num_tests_failed) + " tests failed");
-    }
+    auto ret = persistent_tests(this);
+    num_tests_run += ret.first;
+    num_tests_failed += ret.second;
+    
+    ret = resource_tests(this);
+    num_tests_run += ret.first;
+    num_tests_failed += ret.second;
+    
+    PostMessage("");
+    PostMessage("File System Tests Completed: " + std::to_string(num_tests_run) + " tests run, " + std::to_string(num_tests_failed) + " tests failed");
+}
 
-};
 
 /*
     standard MS_Module, whose CreateInstance is called during startup
