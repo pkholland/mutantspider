@@ -110,6 +110,19 @@ std::string errno_string()
 
 }
 
+/*
+    note about checking errno for both EBADF and EACCES
+    
+    In the case where you try to write to a file descriptor without write access
+    or read to an fd without read access.
+    
+    Emscripten sets errno to EBADF in these cases and
+    NaCl sets it to EACCES.  The linux manpages all discuss
+    EBADF, and not EACCES for these cases on read and write.
+    EBADF is probably more correct in this sense, but to be
+    compatible with both this code checks for both.
+*/
+
 #define kReallyBigFileSize 1000000
 #define kReallyBigFileString "hotdogs and sausages and "
 
@@ -317,7 +330,7 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (written != -1 || (errno != EBADF && errno != EACCES))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("write(read-only-fd, \"hello\", 5) should have failed with EBADF, but did not.  It returned ") + std::to_string(written) + ", and errno: " + errno_string());
+                    PostError(inst, std::string("write(read-only-fd, \"hello\", 5) should have failed with EBADF or EACCES, but did not.  It returned ") + std::to_string(written) + ", and errno: " + errno_string());
                 }
                 else
                      inst->PostMessage("write(read-only-fd, \"hello\", 5)");
@@ -346,7 +359,7 @@ std::pair<int,int> persistent_tests(MS_AppInstance* inst)
                 if (bytes_read != -1 || (errno != EBADF && errno != EACCES))
                 {
                     ++num_tests_failed;
-                    PostError(inst, std::string("read(write-only-fd, &b, 1) should have failed with errno EBADF, but did not.  It returned ") + std::to_string(bytes_read) + ", and errno: " + errno_string());
+                    PostError(inst, std::string("read(write-only-fd, &b, 1) should have failed with errno EBADF or EACCES, but did not.  It returned ") + std::to_string(bytes_read) + ", and errno: " + errno_string());
                 }
                 else
                     inst->PostMessage("read(write-only-fd, &b, 1)");

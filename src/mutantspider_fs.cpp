@@ -729,15 +729,15 @@ int rezfs_access(const char* path, int mode)
     auto ent = get_dir_ent(path);
     if (!ent)
         return -ENOENT;
-    if (ent->is_dir || ((mode & O_ACCMODE) != O_RDONLY))
-        return -EACCES;
+    if ((mode & O_ACCMODE) != O_RDONLY)
+        return -EROFS;
     return 0;
 }
 
 // Called when O_CREAT is passed to open()
 int rezfs_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 int rezfs_setattr(const mutantspider::rez_dir_ent* ent, struct stat* st)
@@ -784,13 +784,13 @@ int rezfs_fsync(const char* path, int datasync, struct fuse_file_info* finfo)
 // Called by ftruncate()
 int rezfs_ftruncate(const char* _path, off_t pos, struct fuse_file_info* finfo)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Called by mkdir()
 int rezfs_mkdir(const char* _path, mode_t mode)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Here is the comment in fuse.h from pepper35:
@@ -802,7 +802,7 @@ int rezfs_mkdir(const char* _path, mode_t mode)
 // _is_ NULL.  We set 'create' to rezfs_create, and so this will never be called.
 int rezfs_mknod(const char* path, mode_t mode, dev_t dev)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Called by open()
@@ -932,25 +932,25 @@ int rezfs_releasedir(const char* path, struct fuse_file_info* finfo)
 // Called by rename()
 int rezfs_rename(const char* _path, const char* _new_path)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Called by rmdir()
 int rezfs_rmdir(const char* _path)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Called by truncate(), as well as open() when O_TRUNC is passed.
 int rezfs_truncate(const char* _path, off_t pos)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Called by unlink()
 int rezfs_unlink(const char* _path)
 {
-    return -EACCES;
+    return -EROFS;
 }
 
 // Called by write(). Note that FUSE specifies that a write should always
