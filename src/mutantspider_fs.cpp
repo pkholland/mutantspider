@@ -87,12 +87,31 @@ std::condition_variable                         pbmemfs_cnd;
 // when it gets them.
 void pbmemfs_worker()
 {
+    bool printed_sleep = true;
     while (true)
     {
         std::pair<void (*)(void*), void*> task;
         {
             std::unique_lock<std::mutex> lk(pbmemfs_mtx);
+#if 0
             pbmemfs_cnd.wait(lk, []{return !pbmemfs_task_list.empty();});
+#else
+            while (pbmemfs_task_list.empty())
+            {
+                if (!printed_sleep)
+                {
+                    printed_sleep = true;
+                    printf("no more tasks waiting, sleeping\n");
+                }
+                pbmemfs_cnd.wait(lk);
+            }
+            
+#endif
+            if (printed_sleep)
+            {
+                printed_sleep = false;
+                printf("tasks queued, working on them\n");
+            }
             task = pbmemfs_task_list.front();
             pbmemfs_task_list.pop_front();
         }
@@ -149,12 +168,11 @@ struct file_ref
 // track of both the file descriptor in /.memfs_shadow as well
 // as /.html5fs_shadow.  Otherwise we just keep track of the
 // the one in /.memfs_shadow
-bool set_fh(struct fuse_file_info* finfo, mode_t mode, int fd)
+bool set_fh(struct fuse_file_info* finfo, int flags, int fd)
 {
-    if ((mode & O_ACCMODE) != O_RDONLY)
+    if ((flags & O_ACCMODE) != O_RDONLY)
     {
-        // either O_WRONLY or O_RDWR, so it is possible that it will be
-        // written to
+        // it is possible that it will be written to
         auto fr = new file_ref(fd);
         finfo->fh = reinterpret_cast<decltype(finfo->fh)>(fr);
         return true;
@@ -204,25 +222,29 @@ int pbmemfs_access(const char* path, int mode)
     return access((mem_shadow_name + path).c_str(),mode);
 }
 
-// runs in the background thread
-void _open(std::string path, mode_t mode, file_ref* fr)
-{
-    int fd = open(path.c_str(),mode);
-    if (fd >= 0)
-        fr->html5fs_fd_ = fd;
-    else
-        fprintf(stderr, "open(%s, %d) failed with errno: %d\n", path.c_str(), (int)mode, errno);
-}
-
 // Called when O_CREAT is passed to open()
-int pbmemfs_create(const char* _path, mode_t /*mode*/, struct fuse_file_info* finfo)
+int pbmemfs_create(const char* _path, mode_t mode, struct fuse_file_info* finfo)
 {
     std::string path(_path);
-    int fd = open((mem_shadow_name + path).c_str(),O_CREAT | O_RDWR);
+    int fd = open((mem_shadow_name + path).c_str(),finfo->flags,mode);
     if (fd >= 0)
     {
-        if (set_fh(finfo, O_CREAT | O_RDWR, fd))
-            bkg_call(_open, html5_shadow_name + path, O_CREAT | O_RDWR, get_fr(finfo));
+        set_fh(finfo, finfo->flags, fd);
+        bkg_call([](std::string path, int flags, mode_t mode, file_ref* fr)
+            {
+                int fd = open(path.c_str(), flags, mode);
+                if (fd >= 0)
+                {
+                    // fr will be null if the caller called open(path, O_RDONLY | O_CREAT,mode);
+                    if (fr)
+                        fr->html5fs_fd_ = fd;
+                    else
+                        close(fd);
+                }
+                else
+                    fprintf(stderr, "open(%s, %o, %o) failed with errno: %d\n", path.c_str(), (int)flags, (int)mode, errno);
+            },
+            html5_shadow_name + path, finfo->flags, mode,get_fr(finfo));
         return 0;
     }
     return -errno;
@@ -309,11 +331,20 @@ int pbmemfs_mknod(const char* path, mode_t mode, dev_t dev)
 int pbmemfs_open(const char* _path, struct fuse_file_info* finfo)
 {
     std::string path(_path);
-    int fd = open((mem_shadow_name + path).c_str(),O_RDWR);
+    int fd = open((mem_shadow_name + path).c_str(),finfo->flags);
     if (fd >= 0)
     {
-        set_fh(finfo, O_RDWR, fd);
-        bkg_call(_open, html5_shadow_name + path,O_RDWR, get_fr(finfo));
+        if (set_fh(finfo, finfo->flags, fd))
+            bkg_call([](std::string path, int flags, file_ref* fr)
+                {
+                    int fd = open(path.c_str(), flags);
+                    if (fd >= 0)
+                        fr->html5fs_fd_ = fd;
+                    else
+                        fprintf(stderr, "open(%s, %o) failed with errno: %d\n", path.c_str(), (int)flags, errno);
+                },
+                html5_shadow_name + path, finfo->flags, get_fr(finfo));
+
         return 0;
     }
     return -errno;

@@ -26,6 +26,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/time.h>
+#include <utime.h>
+
 
 namespace {
 
@@ -97,6 +100,13 @@ std::string errno_string()
     }
 }
 
+std::string to_octal_string(int i)
+{
+    char buf[10];
+    sprintf(buf, "%o", i);
+    return std::string("0") + &buf[0];
+}
+
 }
 
 /*
@@ -130,8 +140,8 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
             {
                 inst->PostHeading("Persistent File Tests: Data previously stored, running validate and delete tests");
                 
-                // there should be exactly 2 files in persistent/file_system_example/root,
-                // one named small_file and one named big_file (plus '.' and '..')
+                // there should be exactly 3 files in persistent/file_system_example/root,
+                // one named small_file, one named write_only_file, and one named big_file (plus '.' and '..')
                 ++num_tests_run;
                 DIR* dir = opendir("/persistent/file_system_example/root");
                 if (dir == 0)
@@ -179,6 +189,30 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                                         ++num_tests_failed;
                                         inst->PostError(LINE_PFX + "S_ISREG incorrectly reported \"/persistent/file_system_example/root/small_file\" as something other than a file");
                                     }
+                                    
+                                    
+                                }
+                            }
+                            else if (strcmp(ent->d_name,"write_only_file") == 0)
+                            {
+                                ++num_tests_run;
+                                struct stat st;
+                                if (stat("/persistent/file_system_example/root/write_only_file",&st) != 0)
+                                {
+                                    ++num_tests_failed;
+                                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) failed with errno: " + errno_string());
+                                }
+                                else
+                                {
+                                    inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st)");
+                                    ++num_tests_run;
+                                    if ((st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) != (S_IWUSR | S_IWGRP | S_IWOTH))
+                                    {
+                                        ++num_tests_failed;
+                                        inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) incorrectly reported access as " + to_octal_string(st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) + " instead of " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
+                                    }
+                                    else
+                                        inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) correctly reported access as " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
                                 }
                             }
                             else if (strcmp(ent->d_name,"big_file") == 0)
@@ -298,6 +332,54 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
             {
                 close(fd);
                 inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/small_file\", O_RDONLY | O_CREAT, 0666)");
+            }
+            
+            // can we create a file with write-only access, and does this access persist?
+            ++num_tests_run;
+            fd = open("/persistent/file_system_example/root/write_only_file",O_WRONLY | O_CREAT, S_IWUSR | S_IWGRP | S_IWOTH);
+            if (fd == -1)
+            {
+                ++num_tests_failed;
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/write_only_file\",O_WRONLY | O_CREAT, S_IWUSR | S_IWGRP | S_IWOTH) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
+            }
+            else
+            {
+                close(fd);
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/write_only_file\", O_WRONLY | O_CREAT, S_IWUSR | S_IWGRP | S_IWOTH)");
+                
+                // imediately after creation is the access mode S_IWUSR | S_IWGRP | S_IWOTH?
+                ++num_tests_run;
+                struct stat st;
+                stat("/persistent/file_system_example/root/write_only_file",&st);
+                if ((st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) != (S_IWUSR | S_IWGRP | S_IWOTH))
+                {
+                    ++num_tests_failed;
+                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) incorrectly reported access as " + to_octal_string(st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) + " instead of " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
+                }
+                else
+                    inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) correctly reported access as " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
+                
+                #if 0
+                // can we set the access time of this file and does that persist?
+                ++num_tests_run;
+                struct timeval tv[2];
+                tv[0].tv_sec = 17;
+                tv[0].tv_usec = 18;
+                tv[1].tv_sec = 19;
+                tv[1].tv_usec = 20;
+                if (utimes("/persistent/file_system_example/root/write_only_file", tv) != 0)
+                {
+                    ++num_tests_failed;
+                    inst->PostError(LINE_PFX + "utimes(\"/persistent/file_system_example/root/write_only_file\", tv) failed with errno: " + errno_string());
+                }
+                else
+                {
+                    inst->PostMessage(LINE_PFX + "utimes(\"/persistent/file_system_example/root/write_only_file\", tv)");
+                    
+                    // can we read them back right now?
+                }
+                #endif
+                
             }
             
             // can we open, read-only, an existing file (the one we just created above)
