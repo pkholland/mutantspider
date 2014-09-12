@@ -50,7 +50,6 @@ mergeInto(LibraryManager.library, {
 
           if (create) {
             IDBFS.loadLocalEntry(path, function (err, entry) {
-              console.log('PBMEMFS.create_or_delete_node, path: ' + path + 'mode: ' + entry.mode);
               if (err)
                 console.log('IDBFS.loadLocalEntry(' + path + ') failed with err: ' + err);
               else
@@ -72,7 +71,6 @@ mergeInto(LibraryManager.library, {
     },
 
     mknod: function(parent, name, mode, dev) {
-      console.log('PBMEMFS.mknod, name: ' + name + ', mode: ' + mode);
       var node = MEMFS.createNode(parent, name, mode, dev);
       if (FS.isFile(node.mode)) {
         if (PBMEMFS.recording_changes)
