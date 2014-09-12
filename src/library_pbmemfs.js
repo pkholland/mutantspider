@@ -2,26 +2,31 @@ mergeInto(LibraryManager.library, {
   $PBMEMFS__deps: ['$IDBFS', '$FS', '$MEMFS'],
   $PBMEMFS: {
   
-    node_ops: null,
+    dir_node_ops: null,
+    file_node_ops: null,
     orig_unlink: null,
     orig_rmdir: null,
     file_stream_ops: null,
     orig_write: null,
+    orig_dir_setattr: null,
+    orig_file_setattr: null,
     recording_changes: false,
 
     mount: function(mount) {
       var node = IDBFS.mount.apply(null, arguments);
-      if (!PBMEMFS.node_ops) {
-        PBMEMFS.node_ops = {};
+      if (!PBMEMFS.dir_node_ops) {
+        PBMEMFS.dir_node_ops = {};
         for (var p in node.node_ops)
-          PBMEMFS.node_ops[p] = node.node_ops[p];
-        PBMEMFS.node_ops.mknod = PBMEMFS.mknod;
+          PBMEMFS.dir_node_ops[p] = node.node_ops[p];
+        PBMEMFS.dir_node_ops.mknod = PBMEMFS.mknod;
         PBMEMFS.orig_unlink = node.node_ops.unlink;
-        PBMEMFS.node_ops.unlink = PBMEMFS.unlink;
+        PBMEMFS.dir_node_ops.unlink = PBMEMFS.unlink;
         PBMEMFS.orig_rmdir = node.node_ops.rmdir;
-        PBMEMFS.node_ops.rmdir = PBMEMFS.rmdir;
+        PBMEMFS.dir_node_ops.rmdir = PBMEMFS.rmdir;
+        PBMEMFS.orig_dir_setattr = node.node_ops.setattr;
+        PBMEMFS.dir_node_ops.setattr = PBMEMFS.dir_setattr;
       }
-      node.node_ops = PBMEMFS.node_ops;
+      node.node_ops = PBMEMFS.dir_node_ops;
       return node;
     },
 
@@ -45,6 +50,7 @@ mergeInto(LibraryManager.library, {
 
           if (create) {
             IDBFS.loadLocalEntry(path, function (err, entry) {
+              console.log('PBMEMFS.create_or_delete_node, path: ' + path + 'mode: ' + entry.mode);
               if (err)
                 console.log('IDBFS.loadLocalEntry(' + path + ') failed with err: ' + err);
               else
@@ -66,6 +72,7 @@ mergeInto(LibraryManager.library, {
     },
 
     mknod: function(parent, name, mode, dev) {
+      console.log('PBMEMFS.mknod, name: ' + name + ', mode: ' + mode);
       var node = MEMFS.createNode(parent, name, mode, dev);
       if (FS.isFile(node.mode)) {
         if (PBMEMFS.recording_changes)
@@ -77,12 +84,19 @@ mergeInto(LibraryManager.library, {
           PBMEMFS.file_stream_ops.close = PBMEMFS.close;
           PBMEMFS.orig_write = node.stream_ops.write;
           PBMEMFS.file_stream_ops.write = PBMEMFS.write;
+          
+          PBMEMFS.file_node_ops = {}
+          for (var p in node.node_ops)
+            PBMEMFS.file_node_ops[p] = node.node_ops[p];
+          PBMEMFS.orig_file_setattr = node.node_ops.setattr;
+          PBMEMFS.file_node_ops.setattr = PBMEMFS.file_setattr;
         }
         node.stream_ops = PBMEMFS.file_stream_ops;
+        node.node_ops = PBMEMFS.file_node_ops;
       } else if (FS.isDir(node.mode)) {
         if (PBMEMFS.recording_changes)
           PBMEMFS.create_or_delete_node(parent, FS.getPath(node), true);
-        node.node_ops = PBMEMFS.node_ops;
+        node.node_ops = PBMEMFS.dir_node_ops;
       }
       return node;
     },
@@ -98,6 +112,18 @@ mergeInto(LibraryManager.library, {
       PBMEMFS.orig_unlink(parent,name);
       PBMEMFS.create_or_delete_node(parent, path, false);
     },
+    
+    dir_setattr: function(node, attr) {
+      PBMEMFS.orig_dir_setattr(node,attr);
+      if (PBMEMFS.recording_changes)
+        PBMEMFS.write_file(FS.getPath(node), node.mount.mountpoint);
+    },
+
+    file_setattr: function(node, attr) {
+      PBMEMFS.orig_file_setattr(node,attr);
+      if (PBMEMFS.recording_changes)
+        PBMEMFS.write_file(FS.getPath(node), node.mount.mountpoint);
+    },
 
     write: function(stream, buffer, offset, length, position, canOwn) {
       var bytesWritten = PBMEMFS.orig_write(stream, buffer, offset, length, position, canOwn);
@@ -105,32 +131,37 @@ mergeInto(LibraryManager.library, {
         stream.is_dirty = true;
       return bytesWritten;
     },
+    
+    write_file: function(path, mountpoint) {
+      IDBFS.getDB(mountpoint, function(err, db) {
+
+        if (err)
+          console.log('IDBFS.getDB(' + mountpoint + ') failed with err: ' + err);
+        else {
+          var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
+          transaction.onerror = function() { console.log('db.transaction([' + IDBFS.DB_STORE_NAME + '], \'readwrite\') failed with error: ' + this.error); };
+          var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+		  
+          IDBFS.loadLocalEntry(path, function (err, entry) {
+            if (err)
+              console.log('IDBFS.loadLocalEntry(' + path + ') failed with err: ' + err);
+            else
+              IDBFS.storeRemoteEntry(store, path, entry, function(err) {
+                if (err)
+                  console.log('IDBFS.storeRemoteEntry(' + path + ') failed with err: ' + err);
+              });
+          });
+        }
+
+      });
+      
+    },
 	
     close: function(stream) {
       if (stream.is_dirty) {
         var lookup = FS.lookupPath(stream.path, { parent: true });
         var parent = lookup.node;
-        IDBFS.getDB(parent.mount.mountpoint, function(err, db) {
-
-          if (err)
-            console.log('IDBFS.getDB(' + parent.mount.mountpoint + ') failed with err: ' + err);
-          else {
-            var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
-            transaction.onerror = function() { console.log('db.transaction([' + IDBFS.DB_STORE_NAME + '], \'readwrite\') failed with error: ' + this.error); };
-            var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
-		  
-            IDBFS.loadLocalEntry(stream.path, function (err, entry) {
-              if (err)
-                console.log('IDBFS.loadLocalEntry(' + stream.path + ') failed with err: ' + err);
-              else
-                IDBFS.storeRemoteEntry(store, stream.path, entry, function(err) {
-                  if (err)
-                    console.log('IDBFS.storeRemoteEntry(' + stream.path + ') failed with err: ' + err);
-                });
-            });
-          }
-
-        });
+        PBMEMFS.write_file(stream.path, parent.mount.mountpoint);
       }
     }
     

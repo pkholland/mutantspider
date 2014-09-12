@@ -29,19 +29,10 @@
 #include <sys/time.h>
 #include <utime.h>
 
-
 namespace {
 
-void print_indents(int numIndents)
+void clear_all(const std::string& dir_name)
 {
-    for (int i = 0; i < numIndents; i++)
-        printf("    ");
-}
-
-void clear_all(const std::string& dir_name, int numIndents)
-{
-    print_indents(numIndents);
-    printf("clear_all(\"%s\")\n", dir_name.c_str());
     DIR	*dir;
     bool unlinked;
     do {
@@ -54,22 +45,18 @@ void clear_all(const std::string& dir_name, int numIndents)
                 if (strcmp(ent->d_name,".") && strcmp(ent->d_name,".."))
                 {
                     std::string path = dir_name + "/" + ent->d_name;
-                    print_indents(numIndents);
-                    printf("found file/path %s\n", path.c_str());
                     struct stat st;
                     if (stat(path.c_str(),&st) == 0)
                     {
                         if (S_ISDIR(st.st_mode))
                         {
                             unlinked = true;
-                            clear_all(path, numIndents+1);
+                            clear_all(path);
                          }
                         else
                         {
                             unlinked = true;
                             int ret = unlink(path.c_str());
-                            print_indents(numIndents);
-                            printf("unlink(%s) returned %d, errno: %d\n", path.c_str(), ret, errno);
                         }
                     }
                 }
@@ -79,8 +66,6 @@ void clear_all(const std::string& dir_name, int numIndents)
     } while (unlinked);
     
     int ret = rmdir(dir_name.c_str());
-    print_indents(numIndents);
-    printf("rmdir(%s) returned %d, errno: %d\n", dir_name.c_str(), ret, errno);
 }
 
 std::string errno_string()
@@ -109,19 +94,6 @@ std::string to_octal_string(int i)
 
 }
 
-/*
-    note about checking errno for both EBADF and EACCES
-    
-    In the case where you try to write to a file descriptor without write access
-    or read to an fd without read access.
-    
-    Emscripten sets errno to EBADF in these cases and
-    NaCl sets it to EACCES.  The linux manpages all discuss
-    EBADF, and not EACCES for these cases on read and write.
-    EBADF is probably more correct in this sense, but to be
-    compatible with both this code checks for both.
-*/
-
 #define kReallyBigFileSize 1000000
 #define kReallyBigFileString "hotdogs and sausages and "
 
@@ -139,6 +111,16 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
             if (S_ISDIR(st.st_mode))
             {
                 inst->PostHeading("Persistent File Tests: Data previously stored, running validate and delete tests");
+                
+                // is the access mode set to 0777?
+                ++num_tests_run;
+                if ((st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) != (S_IRWXU | S_IRWXG | S_IRWXO))
+                {
+                    ++num_tests_failed;
+                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root\", &st) incorrectly reported access as " + to_octal_string(st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) + " instead of 0777");
+                }
+                else
+                    inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root\", &st) correctly reported access as 0777");
                 
                 // there should be exactly 3 files in persistent/file_system_example/root,
                 // one named small_file, one named write_only_file, and one named big_file (plus '.' and '..')
@@ -213,6 +195,16 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                                     }
                                     else
                                         inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) correctly reported access as " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
+                                    
+                                    ++num_tests_run;
+                                    if (st.st_mtime != 17)
+                                    {
+                                        ++num_tests_failed;
+                                        inst->PostError(LINE_PFX + "write_only_file mod time incorrectly reported as " + std::to_string(st.st_mtime) + ", instead of 17");
+                                    }
+                                    else
+                                        inst->PostMessage(LINE_PFX + "write_only_file mod time correctly reported as 17");
+
                                 }
                             }
                             else if (strcmp(ent->d_name,"big_file") == 0)
@@ -285,12 +277,12 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                     }
                 }
                 
-                clear_all("/persistent/file_system_example/root",0);
+                clear_all("/persistent/file_system_example/root");
             }
             else
             {
                 inst->PostError(LINE_PFX + "/persistent/file_system_example/root exists but does not appear to be a directory, attempting to delete");
-                clear_all("/persistent/file_system_example/root",0);
+                unlink("/persistent/file_system_example/root");
             }
         }
         else
@@ -359,25 +351,40 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 else
                     inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) correctly reported access as " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
                 
-                #if 0
-                // can we set the access time of this file and does that persist?
                 ++num_tests_run;
-                struct timeval tv[2];
-                tv[0].tv_sec = 17;
-                tv[0].tv_usec = 18;
-                tv[1].tv_sec = 19;
-                tv[1].tv_usec = 20;
-                if (utimes("/persistent/file_system_example/root/write_only_file", tv) != 0)
+                #if !defined(__native_client__) || PEPPER_VERSION >= 38
+                // can we set the access time of this file and does that persist?
+                struct utimbuf utb;
+                utb.modtime = 17;
+                utb.actime = 18;
+                if (utime("/persistent/file_system_example/root/write_only_file", &utb) != 0)
                 {
                     ++num_tests_failed;
-                    inst->PostError(LINE_PFX + "utimes(\"/persistent/file_system_example/root/write_only_file\", tv) failed with errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "utime(\"/persistent/file_system_example/root/write_only_file\", &utb) failed with errno: " + errno_string());
                 }
                 else
                 {
-                    inst->PostMessage(LINE_PFX + "utimes(\"/persistent/file_system_example/root/write_only_file\", tv)");
+                    inst->PostMessage(LINE_PFX + "utime(\"/persistent/file_system_example/root/write_only_file\", &utb)");
                     
                     // can we read them back right now?
+                    ++num_tests_run;
+                    struct stat st;
+                    stat("/persistent/file_system_example/root/write_only_file", &st);
+                    
+                    // although the code above does set the atime field, following the
+                    // "Criticism of atime" issues, we don't verify that it was set, or
+                    // care whether it was set.
+                    if (st.st_mtime != 17)
+                    {
+                        ++num_tests_failed;
+                        inst->PostError(LINE_PFX + "immediately after setting with utime, file mod time should have been 17.  Instead is " + std::to_string(st.st_mtime));
+                    }
+                    else
+                        inst->PostMessage(LINE_PFX + "immediately after setting with utime, file mod time was read as 17");
                 }
+                #elif defined(__native_client__)
+                ++num_tests_failed;
+                inst->PostError(LINE_PFX + "Pepper_" + std::to_string(PEPPER_VERSION) + " is too old to run file modification time tests - it doesn't implement utime, please consider updating to at least Pepper_38");
                 #endif
                 
             }
@@ -398,10 +405,10 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 ++num_tests_run;
                 const char* buf = "hello";
                 auto written = write(fd, buf, strlen(buf));
-                if (written != -1 || (errno != EBADF && errno != EACCES))
+                if (written != -1 || errno != EBADF)
                 {
                     ++num_tests_failed;
-                    inst->PostError(LINE_PFX + "write(read-only-fd, \"hello\", 5) should have failed with EBADF or EACCES, but did not.  It returned " + std::to_string(written) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "write(read-only-fd, \"hello\", 5) should have failed with EBADF, but did not.  It returned " + std::to_string(written) + ", and errno: " + errno_string());
                 }
                 else
                      inst->PostMessage(LINE_PFX + "write(read-only-fd, \"hello\", 5)");
@@ -427,10 +434,10 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 ++num_tests_run;
                 char b;
                 auto bytes_read = read(fd, &b, 1);
-                if (bytes_read != -1 || (errno != EBADF && errno != EACCES))
+                if (bytes_read != -1 || errno != EBADF)
                 {
                     ++num_tests_failed;
-                    inst->PostError(LINE_PFX + "read(write-only-fd, &b, 1) should have failed with errno EBADF or EACCES, but did not.  It returned " + std::to_string(bytes_read) + ", and errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "read(write-only-fd, &b, 1) should have failed with errno EBADF, but did not.  It returned " + std::to_string(bytes_read) + ", and errno: " + errno_string());
                 }
                 else
                     inst->PostMessage(LINE_PFX + "read(write-only-fd, &b, 1)");

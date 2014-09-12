@@ -132,6 +132,7 @@ ms.EMCC_CLOSURE_COMPILER := $(shell which emcc | sed 's:\(^.*\)emcc$$:\1third_pa
 
 ms.getos := python $(ms.this_make_dir)nacl_sdk_root/tools/getos.py
 ms.osname := $(shell $(ms.getos))
+ms.pepper_version := $(shell $(ms.getos) --sdk-version)
 ms.tc_path := $(realpath $(ms.this_make_dir)nacl_sdk_root/toolchain)
 ms.lib_root := $(ms.this_make_dir)nacl_sdk_root/lib/pnacl
 
@@ -224,6 +225,11 @@ endif
 CFLAGS_release+=-O2 -DNDEBUG
 # REVISIT : Should be -O0 for debug but that is making some binaries too big.
 CFLAGS_debug+=-g
+
+#
+# all pnacl compiles can check this macro
+#
+CFLAGS_pnacl+=-DPEPPER_VERSION=$(ms.pepper_version)
 
 #
 # something in DEBUG stuff causes link failures in emcc (at least version 1.16)
