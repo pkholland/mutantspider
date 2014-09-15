@@ -151,7 +151,6 @@ std::pair<int,int> resource_tests(FileSystemInstance* inst)
         inst->PostMessage(LINE_PFX + "open(\"/resources/file2.txt\", O_RDWR) correctly failed with errno = EROFS");
     
     // are we correctly blocked from trying to chmod resources/file2.txt to something writable?
-    errno = 0;
     ++num_tests_run;
     auto rslt = chmod("/resources/file2.txt", 0666);
     if ((rslt != -1) || (errno != EROFS))
@@ -164,9 +163,9 @@ std::pair<int,int> resource_tests(FileSystemInstance* inst)
         {
             fd = open("/resources/file2.txt", O_RDWR);
             if (fd == -1)
-                inst->PostMessage(LINE_PFX + "chmod reported that it worked, but we still cannot open the file with read access -- this is a good thing" );
+                inst->PostMessage(LINE_PFX + "previous chmod reported that it worked, but we still cannot open the file with read access -- this is a good thing" );
             else
-                inst->PostError(LINE_PFX + "chmod reported that it worked, and we can now open the file with read access -- this is bad" );
+                inst->PostError(LINE_PFX + "previous chmod reported that it worked, and we can now open the file with read access -- this is bad" );
         }
     }
     else
