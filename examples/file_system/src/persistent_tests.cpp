@@ -24,7 +24,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <utime.h>
@@ -66,30 +65,6 @@ void clear_all(const std::string& dir_name)
     } while (unlinked);
     
     int ret = rmdir(dir_name.c_str());
-}
-
-std::string errno_string()
-{
-    switch (errno)
-    {
-        case EPERM:
-            return "EPERM";
-        case ENOENT:
-            return "ENOENT";
-        case EBADF:
-            return "EBADF";
-        case EACCES:
-            return "EACCES";
-        default:
-            return std::to_string(errno);
-    }
-}
-
-std::string to_octal_string(int i)
-{
-    char buf[10];
-    sprintf(buf, "%o", i);
-    return std::string("0") + &buf[0];
 }
 
 }
@@ -158,8 +133,29 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                                     {
                                         inst->PostMessage(LINE_PFX + "S_ISREG reported \"/persistent/file_system_example/root/small_file\" as a file (not directory)");
                                         ++num_tests_run;
-                                        if (st.st_size == 11)
+                                        if (st.st_size == 20)
+                                        {
                                             inst->PostMessage(LINE_PFX + "stat correctly reported the file size for \"/persistent/file_system_example/root/small_file\" as 11 bytes");
+        
+                                            ++num_tests_run;
+                                            char rd_buf[32];
+                                            char b[32];
+                                            memcpy(&b[0], "hello world  goodbye", 20);
+                                            b[11] = b[12] = 0;
+                                            auto fd = open("/persistent/file_system_example/root/small_file", O_RDONLY);
+                                            read(fd, &rd_buf, sizeof(rd_buf));
+                                            if (memcmp(&b[0], &rd_buf[0], 20) != 0)
+                                            {
+                                                ++num_tests_failed;
+                                                rd_buf[20] = 0;
+                                                for (int i = 0; i < 20; i++)
+                                                    if (rd_buf[i] == 0)
+                                                        rd_buf[i] = 'Z';
+                                                inst->PostError(LINE_PFX + "file should have contained \"hello worldZZgoodbye\", but it did not.  It contained: \"" + &rd_buf[0] + "\"");
+                                            }
+                                            else
+                                                inst->PostMessage(LINE_PFX + "file correctly contained \"hello worldZZgoodbye\" (with the Z's as NULL bytes)");
+                                        }
                                         else
                                         {
                                             ++num_tests_failed;
@@ -455,7 +451,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 close(fd);
             }
             
-            // can we open, read-write, an existing file
+            // can we open, read-write, an existing file?
             ++num_tests_run;
             fd = open("/persistent/file_system_example/root/small_file",O_RDWR);
             if (fd == -1)
@@ -469,7 +465,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 
                 // can we read from this file, and does it contain "hello"?
                 ++num_tests_run;
-                char rd_buf[16] = {0};
+                char rd_buf[32] = {0};
                 auto bytes_read = read(fd, &rd_buf[0], sizeof(rd_buf));
                 if (bytes_read != strlen(hello))
                 {
@@ -495,6 +491,73 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 }
                 else
                     inst->PostMessage(LINE_PFX + "write(read-write-fd, \" world\", 6)");
+                
+                // can we lseek to the middle and read the right stuff?
+                ++num_tests_run;
+                auto reslt = lseek(fd, 3, SEEK_SET);
+                if (reslt != 3)
+                {
+                    ++num_tests_failed;
+                    inst->PostError(LINE_PFX + "lseek(fd, 3, SEEK_SET) should have returned 3, but did not.  It returned: " + std::to_string(reslt));
+                }
+                {
+                    inst->PostMessage(LINE_PFX + "lseek(fd, 3, SEEK_SET)");
+
+                    ++num_tests_run;
+                    bytes_read = read(fd, &rd_buf[0], 3);
+                    if ((bytes_read != 3) || (memcmp(&rd_buf[0], "lo ", 3) != 0))
+                    {
+                        ++num_tests_failed;
+                        rd_buf[3] = 0;
+                        inst->PostError(LINE_PFX + "lread(fd, &rd_buf[0], 3) should have read \"lo \", but did not.  It returned: " + std::to_string(bytes_read) + " and read: \"" + &rd_buf[0] + "\"");
+                    }
+                    else
+                        inst->PostMessage(LINE_PFX + "read correctly returned \"lo \"");
+                }
+                
+                // can we seek past the end of the file and write some new data and does that cause
+                // the gap between the old and new data to be zero?
+                ++num_tests_run;
+                reslt = lseek(fd, 2, SEEK_END);
+                if (reslt != 13)
+                {
+                    ++num_tests_failed;
+                    inst->PostError(LINE_PFX + "lseek(fd, 2, SEEK_END) should have returned 13, but did not.  It returned: " + std::to_string(reslt));
+                }
+                else
+                {
+                    inst->PostMessage(LINE_PFX + "lseek(fd, 2, SEEK_END)");
+                    
+                    ++num_tests_run;
+                    reslt = write(fd, "goodbye", 7);
+                    if (reslt != 7)
+                    {
+                        ++num_tests_failed;
+                        inst->PostError(LINE_PFX + "write(fd, \"goodbye\", 7), but did not.  It returned: " + std::to_string(reslt));
+                    }
+                    else
+                    {
+                        inst->PostMessage(LINE_PFX + "write(fd, \"goodbye\", 7)");
+                        
+                        ++num_tests_run;
+                        lseek(fd, 0, SEEK_SET);
+                        read(fd, &rd_buf[0], sizeof(rd_buf));
+                        char b[32];
+                        memcpy(b, "hello world  goodbye", 20);
+                        b[11] = b[12] = 0;
+                        if (memcmp(&rd_buf[0], &b[0], 20) != 0)
+                        {
+                            ++num_tests_failed;
+                            rd_buf[20] = 0;
+                            inst->PostError(LINE_PFX + "file should have contained \"hello worldZZgoodbye\", but did not, it contained: \"" + &rd_buf[0] + "\"");
+                        }
+                        else
+                            inst->PostMessage(LINE_PFX + "file correctly contained \"hello worldZZgoodbye\" (with the Z's being NULL bytes)");
+                    }
+                    
+                }
+                
+                
                 close(fd);
             }
             

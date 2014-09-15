@@ -776,10 +776,10 @@ int rezfs_setattr(const mutantspider::rez_dir_ent* ent, struct stat* st)
     memset(st, 0, sizeof(*st));
     st->st_nlink = 1;
     if (ent->is_dir)
-        st->st_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
+        st->st_mode = S_IFDIR | S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH;
     else
     {
-        st->st_mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+        st->st_mode = S_IFREG | S_IRUSR | S_IRGRP | S_IROTH;
         st->st_size = ent->ptr.file->file_data_sz;
     }
     return 0;
@@ -842,6 +842,8 @@ int rezfs_open(const char* path, struct fuse_file_info* finfo)
     auto ent = get_dir_ent(path);
     if (ent)
     {
+        if ((finfo->flags & O_ACCMODE) != O_RDONLY)
+            return -EROFS;
         finfo->fh = reinterpret_cast<decltype(finfo->fh)>(ent);
         return 0;
     }

@@ -107,7 +107,7 @@ mergeInto(LibraryManager.library, {
         if (is_dir != 0)
           mode = {{{ cDefine('S_IFDIR') }}} | 511/*0777*/;
         else
-          mode = {{{ cDefine('S_IFREG') }}} | 438/*0666*/;
+          mode = {{{ cDefine('S_IFREG') }}} | 292/*0444*/;
         var node = FS.createNode(parent, d_name, mode, 0);
         if (is_dir != 0)
         {
@@ -125,6 +125,7 @@ mergeInto(LibraryManager.library, {
         parent.contents.push(d_name);
         
       }
+      MEMFS.node_ops.setattr(parent, {mode: {{{ cDefine('S_IFDIR') }}} | 365/*0555*/});
     }
   
   }

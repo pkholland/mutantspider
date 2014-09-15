@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "mutantspider.h"
+#include "file_system.h"
 
-std::pair<int,int> resource_tests(MS_AppInstance* inst);
+std::pair<int,int> resource_tests(FileSystemInstance* inst);
 

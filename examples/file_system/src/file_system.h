@@ -23,6 +23,7 @@
 #pragma once
 
 #include "mutantspider.h"
+#include "errno.h"
 
 class FileSystemInstance : public MS_AppInstance
 {
@@ -45,5 +46,33 @@ public:
     }
 
 };
+
+inline std::string errno_string()
+{
+    switch (errno)
+    {
+        case EPERM:
+            return "EPERM";
+        case ENOENT:
+            return "ENOENT";
+        case EBADF:
+            return "EBADF";
+        case EACCES:
+            return "EACCES";
+        case ENOTDIR:
+            return "ENOTDIR";
+        case EROFS:
+            return "EROFS";
+        default:
+            return std::to_string(errno);
+    }
+}
+
+inline std::string to_octal_string(int i)
+{
+    char buf[10];
+    sprintf(buf, "%o", i);
+    return std::string("0") + &buf[0];
+}
 
 #define LINE_PFX std::string("[") + std::to_string(__LINE__) + "] "

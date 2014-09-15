@@ -1,3 +1,2 @@
 This is the content of file2.  This file should be available in the
-/resources directory because the Makefile did not specify a custom directory for
-it.
+/resources directory because the Makefile did not specify a custom directory for it.
