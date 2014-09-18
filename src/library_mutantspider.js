@@ -72,7 +72,10 @@ var LibraryMutantspider = {
   ms_syncfs_from_persistent: function() {
     FS.syncfs(true, function(err) {
       if(err)
+      {
+        console.log('ms_syncfs_from_persistent got error');
         mutantspider.post_js_message('#command:async_startup_failed:' + err);
+      }
       else
       {
         ccall('MS_AsyncStartupComplete','null',[],[]);

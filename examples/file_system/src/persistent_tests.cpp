@@ -97,8 +97,8 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 else
                     inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root\", &st) correctly reported access as 0777");
                 
-                // there should be exactly 3 files in persistent/file_system_example/root,
-                // one named small_file, one named write_only_file, and one named big_file (plus '.' and '..')
+                // there should be exactly 4 files in persistent/file_system_example/root,
+                // one named empty_file, one named small_file, one named write_only_file, and one named big_file (plus '.' and '..')
                 ++num_tests_run;
                 DIR* dir = opendir("/persistent/file_system_example/root");
                 if (dir == 0)
@@ -159,7 +159,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                                         else
                                         {
                                             ++num_tests_failed;
-                                            inst->PostError(LINE_PFX + "stat incorrectly reported the file size for \"/persistent/file_system_example/root/small_file\" as " + std::to_string(st.st_size) + " bytes instead of 11");
+                                            inst->PostError(LINE_PFX + "stat incorrectly reported the file size for \"/persistent/file_system_example/root/small_file\" as " + std::to_string(st.st_size) + " bytes instead of 20");
                                         }
                                     }
                                     else
@@ -273,6 +273,28 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                     }
                 }
                 
+                ++num_tests_run;
+                struct stat st;
+                if (stat("persistent/file_system_example/root/empty_file", &st) != 0)
+                {
+                    ++num_tests_failed;
+                    inst->PostError(LINE_PFX + "stat(\"persistent/file_system_example/root/empty_file\", &st) failed with errno: " + errno_string());
+                }
+                else
+                {
+                    inst->PostMessage(LINE_PFX + "stat(\"persistent/file_system_example/root/empty_file\", &st)");
+                    
+                    ++num_tests_run;
+                    
+                    if (st.st_size == 0)
+                        inst->PostMessage(LINE_PFX + "stat correctly reported the size of \"/persistent/file_system_example/root/empty_file\" as 0 bytes");
+                    else
+                    {
+                        ++num_tests_failed;
+                        inst->PostError(LINE_PFX + "stat incorrectly reported the size of \"/persistent/file_system_example/root/empty_file\" as " + std::to_string(st.st_size) + " bytes");
+                    }
+                }
+                
                 clear_all("/persistent/file_system_example/root");
             }
             else
@@ -297,6 +319,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
             }
             inst->PostMessage(LINE_PFX + "mkdir(\"/persistent/file_system_example/root\",0777)");
             
+            
             // does a file which does not exist fail to open as expected?
             ++num_tests_run;
             auto fd = open("/persistent/file_system_example/root/does_not_exist", O_RDONLY);
@@ -307,6 +330,21 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
             }
             else
                 inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/does_not_exist\", O_RDONLY)");
+            
+            // can we make an empty file and will it persist?
+            ++num_tests_run;
+            fd = open("/persistent/file_system_example/root/empty_file",O_RDWR | O_CREAT, 0666);
+            if (fd == -1)
+            {
+                ++num_tests_failed;
+                inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/empty_file\",O_RDWR | O_CREAT, 0666) should have succeeded, but did not.  It returned -1, and errno: " + errno_string());
+            }
+            else
+            {
+                close(fd);
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/empty_file\", O_RDWR | O_CREAT, 0666)");
+            }
+
             
             // can we create a new file?
             ++num_tests_run;

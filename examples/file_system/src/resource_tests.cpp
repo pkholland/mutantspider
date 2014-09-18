@@ -88,6 +88,8 @@ std::pair<int,int> resource_tests(FileSystemInstance* inst)
 {
     int num_tests_run = 0;
     int num_tests_failed = 0;
+    
+//return std::make_pair(num_tests_run, num_tests_failed);
  
     inst->PostMessage("");
     inst->PostHeading("Resource File Tests (see RESOURCES definition in Makefile for file layout):");
