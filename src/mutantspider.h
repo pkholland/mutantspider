@@ -34,6 +34,7 @@
     #include "ppapi/cpp/module.h"
     #include "ppapi/cpp/point.h"
     #include "ppapi/cpp/var.h"
+    #include "ppapi/cpp/var_array_buffer.h"
     #include "ppapi/utility/completion_callback_factory.h"
     #include "ppapi/cpp/graphics_2d.h"
     #include "ppapi/cpp/graphics_3d.h"

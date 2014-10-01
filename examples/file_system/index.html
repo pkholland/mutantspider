@@ -36,14 +36,15 @@
   machine, into the executable itself in such a way that the code can access the files using standard
   <code>fopen</code> and <code>fread</code> calls.  You can read about how this feature works in the
   <code>mutantspider/src/README.makefile</code> file - search for "Resources".</p>
-  <p>The lines below this are the test that is being tried.  If the line is normal, black text then that
-  test passed.  In many cases the code is testing something which is supposed to <i>not</i> work - for
-  example writing to a read-only file.  In these cases the test is verifying that the operation failed
-  and set errno correctly.  If a line is printed in <span class="error">RED</span> then it indicates that
-  the corresponding test failed.  The numbers in brackets at the start of each line are the line number
-  in the two corresponding source files (persistent_tests.cpp and resource_tests.cpp) that generated
-  the printed line.  <span class="heading">BOLD</span> lines are just information about the tests.
-  Thes are not tests themselves.</p>
+  <p>The lines below this are the tests that are being tried or information about the testing.  If the
+  line is normal, black text then that test passed.  In many cases the code is testing something which
+  is supposed to <i>not</i> work - for example writing to a read-only file.  In these cases the test is
+  verifying that the operation failed and set errno correctly.  If a line is printed in
+  <span class="error">RED</span> then it indicates that the corresponding test failed.  The numbers in
+  brackets at the start of each line are the line number in the two corresponding source files
+  (persistent_tests.cpp and resource_tests.cpp) that generated the printed line.
+  <span class="heading">BOLD</span> lines are just information about the tests. Thes are not tests
+  themselves.</p>
   <div id="fs_test" style="width:100%;height:1px"></div>
   <div id="test_output" style="margin-top:30px;font-family:monospace"></div>
 </body>

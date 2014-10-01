@@ -26,7 +26,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/time.h>
-#include <utime.h>
+
+#if defined(__native_client__)
+  #include <ppapi/c/pp_macros.h> // for PPAPI_RELEASE
+#endif
 
 namespace {
 
@@ -377,28 +380,27 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 ++num_tests_run;
                 struct stat st;
                 stat("/persistent/file_system_example/root/write_only_file",&st);
-                if ((st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) != (S_IWUSR | S_IWGRP | S_IWOTH))
+                int mode = st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+                if (mode != (S_IWUSR | S_IWGRP | S_IWOTH))
                 {
                     ++num_tests_failed;
-                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) incorrectly reported access as " + to_octal_string(st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) + " instead of " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
+                    inst->PostError(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) incorrectly reported access as " + to_octal_string(mode) + " instead of " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
                 }
                 else
                     inst->PostMessage(LINE_PFX + "stat(\"/persistent/file_system_example/root/write_only_file\",&st) correctly reported access as " + to_octal_string(S_IWUSR | S_IWGRP | S_IWOTH));
                 
                 ++num_tests_run;
-                #if !defined(__native_client__) || PEPPER_VERSION >= 38
+                #if !defined(__native_client__) || PPAPI_RELEASE >= 39
                 // can we set the access time of this file and does that persist?
-                struct utimbuf utb;
-                utb.modtime = 17;
-                utb.actime = 18;
-                if (utime("/persistent/file_system_example/root/write_only_file", &utb) != 0)
+                struct timeval tv[2] = {{0, 0}, {17, 0}};
+                if (utimes("/persistent/file_system_example/root/write_only_file", tv) != 0)
                 {
                     ++num_tests_failed;
-                    inst->PostError(LINE_PFX + "utime(\"/persistent/file_system_example/root/write_only_file\", &utb) failed with errno: " + errno_string());
+                    inst->PostError(LINE_PFX + "utimes(\"/persistent/file_system_example/root/write_only_file\", tv) failed with errno: " + errno_string());
                 }
                 else
                 {
-                    inst->PostMessage(LINE_PFX + "utime(\"/persistent/file_system_example/root/write_only_file\", &utb)");
+                    inst->PostMessage(LINE_PFX + "utimes(\"/persistent/file_system_example/root/write_only_file\", tv)");
                     
                     // can we read them back right now?
                     ++num_tests_run;
@@ -418,9 +420,8 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 }
                 #elif defined(__native_client__)
                 ++num_tests_failed;
-                inst->PostError(LINE_PFX + "Pepper_" + std::to_string(PEPPER_VERSION) + " is too old to run file modification time tests - it doesn't implement utime, please consider updating to at least Pepper_38");
+                inst->PostError(LINE_PFX + "Pepper_" + std::to_string(PPAPI_RELEASE) + " is too old to run file modification time tests - it doesn't implement utime, please consider updating to at least Pepper_39");
                 #endif
-                
             }
             
             // can we open, read-only, an existing file (the one we just created above)

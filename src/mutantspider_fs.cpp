@@ -40,13 +40,6 @@ static void mkdir_p(const std::string& path)
         pos = path.find(dir,pos+1);
         std::string sp = path.substr(0,pos);
         struct stat st;
-
-        // as of pepper35, errno is not propagated well through
-        // the fuse api.  So we don't check errno being ENOENT
-        // the way one might expect here, and just assume that
-        // any case of stat returning -1 implies that the underlying
-        // reason is ENOENT
-
         if (stat(sp.c_str(), &st) == -1)
         {
             if (mkdir(sp.c_str(),0777) != 0)
@@ -57,14 +50,15 @@ static void mkdir_p(const std::string& path)
 
 #if defined(__native_client__)
 
-#include <pnacl/sys/mount.h>
+#include <sys/mount.h>
 #include <nacl_io/nacl_io.h>
 #include <nacl_io/fuse.h>
 #include <future>
 #include <list>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include <sys/time.h>
+#include <ppapi/c/pp_macros.h>
 
 namespace {
 
@@ -93,7 +87,7 @@ void pbmemfs_worker()
         std::pair<void (*)(void*), void*> task;
         {
             std::unique_lock<std::mutex> lk(pbmemfs_mtx);
-#if 0
+#if 1
             pbmemfs_cnd.wait(lk, []{return !pbmemfs_task_list.empty();});
 #else
             while (pbmemfs_task_list.empty())
@@ -106,12 +100,12 @@ void pbmemfs_worker()
                 pbmemfs_cnd.wait(lk);
             }
             
-#endif
             if (printed_sleep)
             {
                 printed_sleep = false;
                 printf("tasks queued, working on them\n");
             }
+#endif
             task = pbmemfs_task_list.front();
             pbmemfs_task_list.pop_front();
         }
@@ -235,7 +229,7 @@ int pbmemfs_create(const char* _path, mode_t mode, struct fuse_file_info* finfo)
                 int fd = open(path.c_str(), flags, mode);
                 if (fd >= 0)
                 {
-                    // fr will be null if the caller called open(path, O_RDONLY | O_CREAT,mode);
+                    // fr will be null if the caller called open(path, O_RDONLY | O_CREAT, mode);
                     if (fr)
                         fr->html5fs_fd_ = fd;
                     else
@@ -455,6 +449,54 @@ int pbmemfs_rename(const char* _path, const char* _new_path)
     return -errno;
 }
 
+#if PPAPI_RELEASE >= 39
+// called by utime()/utimes()/futimes()/futimens() etc
+int pbmemfs_utimens(const char* _path, const struct timespec _tv[2])
+{
+    std::string path(_path);
+    struct timeval tv[2];
+    if (_tv != 0)
+    {
+        tv[0].tv_sec  = _tv[0].tv_sec;
+        tv[0].tv_usec = _tv[0].tv_nsec / 1000;
+        tv[1].tv_sec  = _tv[1].tv_sec;
+        tv[1].tv_usec = _tv[1].tv_nsec / 1000;
+    }
+    auto tvp = &tv;
+    if (!_tv)
+        tvp = 0;
+    
+    if (utimes((mem_shadow_name + path).c_str(), *tvp) == 0)
+    {
+        bkg_call([](std::string path, const struct timeval tv[2])
+            {
+                if (utimes(path.c_str(), tv) != 0)
+                    fprintf(stderr, "utimes(%s, (timespec)) failed with errno: %d\n", path.c_str(), errno);
+            },
+            html5_shadow_name + path, *tvp);
+        return 0;
+    }
+    
+    return -errno;
+}
+
+int pbmemfs_chmod(const char* _path, mode_t mode)
+{
+    std::string path(_path);
+    if (chmod((mem_shadow_name + path).c_str(), mode) == 0)
+    {
+        bkg_call([](std::string path, mode_t mode)
+            {
+                if (chmod(path.c_str(), mode) != 0)
+                    fprintf(stderr, "chmod(%s, 0%o) failed with errno: %d\n", path.c_str(), mode, errno);
+            },
+            html5_shadow_name + path, mode);
+        return 0;
+    }
+    return -errno;
+}
+#endif
+
 // Called by rmdir()
 int pbmemfs_rmdir(const char* _path)
 {
@@ -526,9 +568,11 @@ int pbmemfs_write(const char* path, const char* buf, size_t count, off_t pos,
 
 // the data structure we give to fuse
 struct fuse_operations pbmemfs_ops = {
-    
+
     0,
     0,
+
+#if PPAPI_RELEASE < 39
     
     pbmemfs_init,
     pbmemfs_destroy,
@@ -551,6 +595,47 @@ struct fuse_operations pbmemfs_ops = {
     pbmemfs_truncate,
     pbmemfs_unlink,
     pbmemfs_write
+    
+#else
+
+    pbmemfs_getattr,
+    0,                  // readlink
+    pbmemfs_mknod,
+    pbmemfs_mkdir,
+    pbmemfs_unlink,
+    pbmemfs_rmdir,
+    0,                  // symlink
+    pbmemfs_rename,
+    0,                  // link
+    pbmemfs_chmod,
+    0,                  // chown
+    pbmemfs_truncate,
+    pbmemfs_open,
+    pbmemfs_read,
+    pbmemfs_write,
+    0,                  // statfs
+    0,                  // flush
+    pbmemfs_release,
+    pbmemfs_fsync,
+    0,                  // setxattr
+    0,                  // getxattr
+    0,                  // listxattr
+    0,                  // removexattr
+    pbmemfs_opendir,
+    pbmemfs_readdir,
+    pbmemfs_releasedir,
+    0,                  // fsyncdir
+    pbmemfs_init,
+    pbmemfs_destroy,
+    pbmemfs_access,
+    pbmemfs_create,
+    pbmemfs_ftruncate,
+    pbmemfs_fgetattr,
+    0,                  // lock
+    pbmemfs_utimens
+
+#endif
+
 };
 
 // copy the contents of 'from' to 'to'
@@ -563,7 +648,7 @@ void file_cp(const char *to, const char *from)
         return;
     }
     
-    auto to_f = open(to, O_CREAT | O_WRONLY);
+    auto to_f = open(to, O_CREAT | O_WRONLY, 0666);
     if (to_f == -1)
     {
         fprintf(stderr, "open(\"%s\", O_CREAT | O_WRONLY) failed with errno: %d\n", to, errno);
@@ -597,6 +682,18 @@ void file_cp(const char *to, const char *from)
     
     close(to_f);
     close(from_f);
+    
+    struct stat st;
+    if (stat(from, &st) != 0)
+    {
+        fprintf(stderr, "stat(%s, %p) failed with errno: %d\n", from, &st, errno);
+        return;
+    }
+    if ((st.st_mode & 0777) != 0666)
+    {
+        if (chmod(to, st.st_mode & 0777) != 0)
+            fprintf(stderr, "chmod(%s, 0%o) failed with errno: %d\n", to, (int)(st.st_mode & O_ACCMODE), errno);
+    }
 }
 
 // copy the contents of /.html5fs_shadow/dirName to /.memfs_shadow/dirName (recursively)
@@ -968,6 +1065,20 @@ int rezfs_rename(const char* _path, const char* _new_path)
     return -EROFS;
 }
 
+#if PPAPI_RELEASE >= 39
+// called by utime()/utimes()/futimes()/futimens() etc
+int rezfs_utimens(const char* _path, const struct timespec _tv[2])
+{
+    return -EROFS;
+}
+
+int rezfs_chmod(const char* _path, mode_t mode)
+{
+    return -EROFS;
+}
+#endif
+
+
 // Called by rmdir()
 int rezfs_rmdir(const char* _path)
 {
@@ -999,6 +1110,8 @@ struct fuse_operations rezfs_ops = {
     
     0,
     0,
+
+#if PPAPI_RELEASE < 39
     
     rezfs_init,
     rezfs_destroy,
@@ -1021,6 +1134,47 @@ struct fuse_operations rezfs_ops = {
     rezfs_truncate,
     rezfs_unlink,
     rezfs_write
+    
+#else
+
+    rezfs_getattr,
+    0,                  // readlink
+    rezfs_mknod,
+    rezfs_mkdir,
+    rezfs_unlink,
+    rezfs_rmdir,
+    0,                  // symlink
+    rezfs_rename,
+    0,                  // link
+    rezfs_chmod,
+    0,                  // chown
+    rezfs_truncate,
+    rezfs_open,
+    rezfs_read,
+    rezfs_write,
+    0,                  // statfs
+    0,                  // flush
+    rezfs_release,
+    rezfs_fsync,
+    0,                  // setxattr
+    0,                  // getxattr
+    0,                  // listxattr
+    0,                  // removexattr
+    rezfs_opendir,
+    rezfs_readdir,
+    rezfs_releasedir,
+    0,                  // fsyncdir
+    rezfs_init,
+    rezfs_destroy,
+    rezfs_access,
+    rezfs_create,
+    rezfs_ftruncate,
+    rezfs_fgetattr,
+    0,                  // lock
+    rezfs_utimens
+
+#endif
+
 };
 
 #endif

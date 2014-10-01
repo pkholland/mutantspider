@@ -12,6 +12,7 @@ mergeInto(LibraryManager.library, {
               getattr: REZFS.node_ops.getattr,
               lookup: MEMFS.node_ops.lookup,
               readdir: REZFS.node_ops.readdir,
+              mknod: REZFS.node_ops.mknod,
             },
             stream: {
             },
@@ -19,6 +20,7 @@ mergeInto(LibraryManager.library, {
           file: {
             node: {
               getattr: REZFS.node_ops.getattr,
+              setattr: REZFS.node_ops.setattr,
             },
             stream: {
               llseek: MEMFS.stream_ops.llseek,
@@ -65,6 +67,12 @@ mergeInto(LibraryManager.library, {
       readdir: function(node) {
         return node.contents;
       },
+      setattr: function(node, attr) {
+        throw new FS.ErrnoError(ERRNO_CODES.EROFS);
+      },
+      mknod: function(parent, name, mode, dev) {
+        throw new FS.ErrnoError(ERRNO_CODES.EROFS);
+      }
     
     },
     
@@ -126,6 +134,7 @@ mergeInto(LibraryManager.library, {
         
       }
       MEMFS.node_ops.setattr(parent, {mode: {{{ cDefine('S_IFDIR') }}} | 365/*0555*/});
+      parent.is_readonly_fs = true;
     }
   
   }

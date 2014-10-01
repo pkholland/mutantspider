@@ -75,7 +75,7 @@ void FileSystemInstance::AsyncStartupComplete()
     num_tests_failed += ret.second;
     
     PostMessage("");
-    PostMessage("File System Tests Completed: " + std::to_string(num_tests_run) + " tests run, " + std::to_string(num_tests_failed) + " tests failed");
+    PostHeading("File System Tests Completed: " + std::to_string(num_tests_run) + " tests run, " + std::to_string(num_tests_failed) + " tests failed");
 }
 
 
