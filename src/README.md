@@ -31,7 +31,7 @@ emulate the Pepper API
 Primary makefile that implements the mutantspider build support mechanism
 
 <b>mutantspider_fs.cpp</b><br>
-Some URL handling support code for the Emscripten emulation of Pepper
+C++ code implementing both the "persistent" and "resource" file systems.
 
 <b>mutantspider_js_file.h</b><br>
 Interface file for URL support code
