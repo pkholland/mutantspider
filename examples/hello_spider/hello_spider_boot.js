@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
         else if (info.status == 'error')
             updateStatus('ERROR: ' + info.message);
         else if (info.status == 'crash')
-            updateStatus('CRASH: ' + info.message);
+            updateStatus('CRASH: ' + (typeof info.message == 'string' ? info.message : 'plugin experienced an unknown error'));
     }
 
     // get the 'black_dot' element (in index.html) and tell mutantspider to

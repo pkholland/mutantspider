@@ -176,7 +176,7 @@ std::pair<int,int> resource_tests(FileSystemInstance* inst)
     else
         inst->PostMessage(LINE_PFX + "chmod(\"/resources/file2.txt\", 0666) correctly failed with errno = EROFS");
     
-    #if !defined(__native_client__) || PPAPI_RELEASE >= 3900  // currently crashing!
+    #if !defined(__native_client__) || PPAPI_RELEASE >= 39  // currently crashing!
     // are we correctly blocked from trying to utime resources/file2.txt?
     ++num_tests_run;
     rslt = utime("/resources/file2.txt", 0);
@@ -187,6 +187,9 @@ std::pair<int,int> resource_tests(FileSystemInstance* inst)
     }
     else
         inst->PostMessage(LINE_PFX + "utime(\"/resources/file2.txt\", 0) correctly failed with errno = EROFS");
+    #else
+        ++num_tests_failed;
+        inst->PostError(LINE_PFX + "This version of Pepper (" + std::to_string(PPAPI_RELEASE) + ") has a crashing bug for calling utime/utimes, supplying a NULL \"time\" parameter, so this test was skipped");
     #endif
     
     // are we correctly blocked from creating a new file in /resources?
