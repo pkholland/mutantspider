@@ -332,7 +332,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                 inst->PostError(LINE_PFX + "open(\"/persistent/file_system_example/root/does_not_exist\",O_RDONLY) should have failed with errno = ENOENT, but did not.  It returned " + std::to_string(fd) + ", and errno: " + errno_string());
             }
             else
-                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/does_not_exist\", O_RDONLY)");
+                inst->PostMessage(LINE_PFX + "open(\"/persistent/file_system_example/root/does_not_exist\", O_RDONLY) correctly failed with errno: ENOENT");
             
             // can we make an empty file and will it persist?
             ++num_tests_run;
@@ -446,7 +446,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                     inst->PostError(LINE_PFX + "write(read-only-fd, \"hello\", 5) should have failed with EBADF, but did not.  It returned " + std::to_string(written) + ", and errno: " + errno_string());
                 }
                 else
-                     inst->PostMessage(LINE_PFX + "write(read-only-fd, \"hello\", 5)");
+                     inst->PostMessage(LINE_PFX + "write(read-only-fd, \"hello\", 5) correctly failed with errno: EBADF");
                 close(fd);
             }
             
@@ -475,7 +475,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                     inst->PostError(LINE_PFX + "read(write-only-fd, &b, 1) should have failed with errno EBADF, but did not.  It returned " + std::to_string(bytes_read) + ", and errno: " + errno_string());
                 }
                 else
-                    inst->PostMessage(LINE_PFX + "read(write-only-fd, &b, 1)");
+                    inst->PostMessage(LINE_PFX + "read(write-only-fd, &b, 1) correctly failed with errno: EBADF");
                 
                 // can we write to this file?
                 ++num_tests_run;

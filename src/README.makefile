@@ -389,7 +389,7 @@ A few more cool things you can do with MMS:
 1. Removing specific files from specific builds.
 
 Your project may contain source files that are needed in your pnacl build, but are not compilable in your emcc build.
-While you could solve this problem by adding #ifndef (EMSCRIPTEN) blocks inside the files themselves sometimes you
+While you could solve this problem by adding #ifndef EMSCRIPTEN blocks inside the files themselves, sometimes you
 don't want to modify these sources at all.  When computing the list of files to compile for a particular build, MMS
 always excludes any file that is listed in the <compiler>_EXCLUDE variable.  So for example:
 
