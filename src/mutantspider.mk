@@ -55,7 +55,7 @@ ifeq (,$(shell which emcc))
  $(info Emscripten compiler 'emcc' is either not installed or not available in the current path)
  $(info ("which emcc" failed to find it).  For information on how to install the emscripten SDK)
  $(info please google search for "Emscripten Download".  For information on how to get a Macintosh)
- $(info terminal window to automatically run the "source emsdk_add_path" tool suggested when you)
+ $(info terminal window to automatically run the "source emsdk_env.sh" tool suggested when you)
  $(info run "emsdk activate latest", google search for "bashrc equivalent mac" -- you will see)
  $(info information on using your .profile or .bash_profile file instead.  The emscripten)
  $(info compiler may require that you have 'python2' installed as a callable tool.  Macs)
@@ -69,11 +69,11 @@ ifeq (,$(shell which emcc))
  $(info now...)
  $(info )
  $(info If you want or need to carefully control the web development tools on your system)
- $(info you should be aware that running "source emsdk_add_path" puts the emscripten bin path)
+ $(info you should be aware that running "source emsdk_env.sh" puts the emscripten bin path)
  $(info ahead of places like /usr/bin, and these emscripten tools come with their own version)
- $(info of a few tools like 'node' and 'npm'.  So any shell that sources emsdk_add_path and)
+ $(info of a few tools like 'node' and 'npm'.  So any shell that sources emsdk_env.sh and)
  $(info then tries to execute an undecorated 'node', will be running the version from your)
- $(info emscript sdk.  In a similar fashion, running 'npm' with -g will place the installed)
+ $(info emscripten sdk.  In a similar fashion, running 'npm' with -g will place the installed)
  $(info tools in your emscripten 'node/<version>/bin' directory.  This may, or may not be what)
  $(info you want.  For anyone who is not picky about where these tools are installed, or what)
  $(info version is installed, letting them install in this location could be a simple solution)
@@ -226,7 +226,7 @@ CFLAGS_release+=-O2 -DNDEBUG
 CFLAGS_debug+=-g
 
 #
-# all pnacl compiles can check this macro
+# all pnacl compiles include this path
 #
 CFLAGS_pnacl+=-I$(realpath $(ms.this_make_dir)nacl_sdk_root/include/pnacl)
 
@@ -254,7 +254,7 @@ LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 ms.EM_EXPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_MS_AsyncStartupComplete', '_main'
 
 #
-# the projects we are interested produce smaller files if memory-init-file is turned on.  We also add some standard asm.js library stuff
+# the projects we are interested in produce smaller files if memory-init-file is turned on.  We also add some standard asm.js library stuff
 #
 CFLAGS_emcc+=--memory-init-file 1
 LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EXPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js --js-library $(ms.this_make_dir)library_rezfs.js
@@ -566,7 +566,7 @@ ms.dir_init={\"$(notdir $(1))\"{{COMMA}}{(rez_file_ent*)&$(call ms.sanitize_rez_
 #
 # If this directory, $(1), has a parent, then add an initialization snippet referencing
 # this directory (ms.dir_init,$(1)), to the parent's initialization list.  If not, then
-# add this snipped to the root initializer.  Regardless of whether $(1) has a parent
+# add this snippet to the root initializer.  Regardless of whether $(1) has a parent
 # or not, add the name of this directory's initialization list to ms.initializer_list
 #
 define ms.add_dir_initializer
