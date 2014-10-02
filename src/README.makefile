@@ -82,13 +82,13 @@ Here are the things it will WARN about, but then make default decisions:
     
 There are also a few things that you can optionally set, but which have good-enough defaults that if you don't set
 them MMS just uses its default.  These are:
-######################################
+###########################################
 
 1)  CONFIG.  If this is not set prior to including mutantspider.mk then it will default to "release".  That is why
     the example above produces its output in the "release" directory of "out".
     
 2)  V (for "verbose output"). If not set, mutantspider.mk defaults to V=0.  When V=0, while make is processing it
-    will show abreviated lines for what tool is currently running and what file it is working on.  When V is anything
+    will show abbreviated lines for what tool is currently running and what file it is working on.  When V is anything
     other than 0 it will show the full command lines that are executing.  For example, invoking make with "make V=1"
     on the command line will cause it to output full command lines.
     
