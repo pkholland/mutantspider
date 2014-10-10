@@ -138,7 +138,7 @@ std::pair<int,int> persistent_tests(FileSystemInstance* inst)
                                         ++num_tests_run;
                                         if (st.st_size == 20)
                                         {
-                                            inst->PostMessage(LINE_PFX + "stat correctly reported the file size for \"/persistent/file_system_example/root/small_file\" as 11 bytes");
+                                            inst->PostMessage(LINE_PFX + "stat correctly reported the file size for \"/persistent/file_system_example/root/small_file\" as 20 bytes");
         
                                             ++num_tests_run;
                                             char rd_buf[32];
