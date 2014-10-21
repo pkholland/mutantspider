@@ -509,6 +509,20 @@ ifneq (,$(RESOURCES))
 #
 ms.sanitize_rez_name=rezRec_$(subst /,XS,$(subst .,X_,$(subst X,XX,$(1))))
 
+
+#
+# Get the size of a given file.
+#
+# $1 = File Name
+#
+ifeq (linux,$(ms.osname))
+ ms.file_size=`stat -c %s $(1)`
+endif
+ifeq (mac,$(ms.osname))
+ ms.file_size=`stat -f %z $(1)`
+endif
+
+
 #
 # $1 file name of path/file to be treated as a resource.  The recipe for this
 # runs the contents of the file, $(1), through od (and then sed) to generate
@@ -524,12 +538,12 @@ $(call ms.resrc_to_auto_gen,$(1)): $(1) | $(dir $(call ms.resrc_to_auto_gen,$(1)
 	@echo "" >> $$@
 	@echo "namespace mutantspider {" >> $$@
 	@printf "const unsigned char $(call ms.sanitize_rez_name,$(1))_[" >> $$@
-	@printf "`stat -f %z $(1)`" >> $$@
+	@printf "$(call ms.file_size,$(1))" >> $$@
 	@echo "] = {" >> $$@
 	@cat $$< | od -vt x1 -An | sed 's/\(\ \)\([0-9a-f][0-9a-f]\)/0x\2,/g' >> $$@
 	@echo "};" >> $$@
 	@echo "extern const rez_file_ent $(call ms.sanitize_rez_name,$(1));" >> $$@
-	@echo "const rez_file_ent $(call ms.sanitize_rez_name,$(1)) = { &$(call ms.sanitize_rez_name,$(1))_[0], `stat -f %z $(1)` };" >> $$@
+	@echo "const rez_file_ent $(call ms.sanitize_rez_name,$(1)) = { &$(call ms.sanitize_rez_name,$(1))_[0], $(call ms.file_size,$(1)) };" >> $$@
 	@echo "}" >> $$@
 
 endef
