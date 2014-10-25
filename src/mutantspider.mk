@@ -301,19 +301,22 @@ ifneq (clean,$(MAKECMDGOALS))
 ms.d:=$(ms.INTERMEDIATE_DIR)/$(CONFIG)
 ms.options_check=\
 mkdir -p $(ms.d);\
-echo "$(subst ",\",$(2))" > $(ms.d)/$(1);\
+echo \"$(subst ",\",$(2))\" > $(ms.d)/$(1);\
 if [ -a $(ms.d)/$(1).opts ]; then\
-	if [ "`diff $(ms.d)/$(1).opts $(ms.d)/$(1)`" != "" ]; then\
-		echo "updating          $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).opts";\
+	if [ \"\`diff $(ms.d)/$(1).opts $(ms.d)/$(1)\`\" != \"\" ]; then\
+		echo \"updating          $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).opts\";\
 		mv $(ms.d)/$(1) $(ms.d)/$(1).opts;\
 	else\
 		rm $(ms.d)/$(1);\
 	fi;\
 else\
-	echo "creating          $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).opts";\
+	echo \"creating          $(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(1).opts\";\
 	mv $(ms.d)/$(1) $(ms.d)/$(1).opts;\
 fi
 
+
+#$(info bash -c "$(call ms.options_check,linker_emcc,$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)))")
+#$(error )
 
 #
 # execute this shell code when this makefile is parsed.  We can't really do the
@@ -323,19 +326,19 @@ fi
 # to rebuild the target - even if our ms.options_check logic didn't end up updating
 # the compiler.opts file.
 #
-ms.m:=$(shell $(call ms.options_check,compiler_pnacl,$(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG))))
+ms.m:=$(shell bash -c "$(call ms.options_check,compiler_pnacl,$(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)))")
 ifneq (,$(ms.m))
 $(info $(ms.m))
 endif
-ms.m:=$(shell $(call ms.options_check,compiler_emcc,$(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG))))
+ms.m:=$(shell bash -c "$(call ms.options_check,compiler_emcc,$(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)))")
 ifneq (,$(ms.m))
 $(info $(ms.m))
 endif
-ms.m:=$(shell $(call ms.options_check,linker_pnacl,$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG))))
+ms.m:=$(shell bash -c "$(call ms.options_check,linker_pnacl,$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)))")
 ifneq (,$(ms.m))
 $(info $(ms.m))
 endif
-ms.m:=$(shell $(call ms.options_check,linker_emcc,$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG))))
+ms.m:=$(shell bash -c "$(call ms.options_check,linker_emcc,$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)))")
 ifneq (,$(ms.m))
 $(info $(ms.m))
 endif
