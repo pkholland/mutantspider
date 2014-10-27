@@ -176,7 +176,7 @@ ms.em_link := emcc
 # $1 = Source Name
 # $2 = Compiler suffix
 #
-ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(2).o
+ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(patsubst ./%,%,$(subst ..,__,$(1))))$(2).o
 
 #
 # Convert a source path to a dependency file path.
@@ -184,12 +184,12 @@ ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(
 # $1 = Source Name
 # $2 = Compiler suffix
 #
-ms.src_to_dep=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(subst ..,__,$(1)))$(2).d
+ms.src_to_dep=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(patsubst ./%,%,$(subst ..,__,$(1))))$(2).d
 
 #
 # Convert a (re)source path to it's equivalent auto_gen file
 #
-ms.resrc_to_auto_gen=$(ms.INTERMEDIATE_DIR)/auto_gen/$(subst ..,__,$(1)).cpp
+ms.resrc_to_auto_gen=$(ms.INTERMEDIATE_DIR)/auto_gen/$(patsubst ./%,%,$(subst ..,__,$(1))).cpp
 
 #
 # Tool to either display short-form (when verbose is off) or
