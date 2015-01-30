@@ -1627,7 +1627,7 @@
     {
     public:
         virtual ~MS_Module() {}
-        virtual virtual MS_AppInstancePtr CreateInstance(MS_Instance instance) = 0;
+        virtual MS_AppInstancePtr CreateInstance(MS_Instance instance) = 0;
     };
 
     inline bool glInitializeMS() { return SDL_Init(SDL_INIT_VIDEO) == 0; }
