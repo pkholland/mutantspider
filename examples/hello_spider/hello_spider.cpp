@@ -221,7 +221,7 @@ private:
     to create the Instance object which the browser interacts with.
     Mutantspider follows the Pepper design here of a two-stage
     initialization sequence.  pp::CreateModule is the first stage,
-    that MS_Module's (this HellowSpiderModule's) CreateInstance is the
+    that MS_Module's (this HelloSpiderModule's) CreateInstance is the
     second stage.
 */
 class HelloSpiderModule : public MS_Module
