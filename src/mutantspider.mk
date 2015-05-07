@@ -241,8 +241,8 @@ CFLAGS_emcc_debug+=-DNDEBUG
 # compiler and linker flags that are used in release emcc
 # TODO: check on --closure 1
 #
-CFLAGS_emcc_release+=-s FORCE_ALIGNED_MEMORY=1 -O2 -s DOUBLE_MODE=0 -s DISABLE_EXCEPTION_CATCHING=0 --llvm-lto 1
-LDFLAGS_emcc_release+=-s FORCE_ALIGNED_MEMORY=1 -O2 -s DOUBLE_MODE=0 -s DISABLE_EXCEPTION_CATCHING=0 --llvm-lto 1 --closure 0
+CFLAGS_emcc_release+=-O2
+LDFLAGS_emcc_release+=-O2 --closure 0
 
 CFLAGS_emcc_debug+=-s ASSERTIONS=1
 LDFLAGS_emcc_debug+=-s ASSERTIONS=1
@@ -384,9 +384,7 @@ $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compile
 	$(call ms.CALL_TOOL,$(ms.pnacl_cc),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.this_make_dir)nacl_sdk_root/include $(2) $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
 $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.CALL_TOOL,$(ms.em_cc),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js)d $(2) $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
-	$(ms.sed) '1 c\'$$$$'\n''$(call ms.src_to_obj,$(1),_js): \\'$$$$'\n' $(call ms.src_to_dep,$(1),_js)d > $(call ms.src_to_dep,$(1),_js)
-	@rm $(call ms.src_to_dep,$(1),_js)d
+	$(call ms.CALL_TOOL,$(ms.em_cc),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js) $(2) $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
 
 endef
 
@@ -399,9 +397,7 @@ $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compile
 	$(call ms.CALL_TOOL,$(ms.pnacl_cxx),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.this_make_dir)nacl_sdk_root/include $(2) -std=gnu++11 $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
 $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.CALL_TOOL,$(ms.em_cxx),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js)d $(2) -std=c++0x $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
-	$(ms.sed) '1 c\'$$$$'\n''$(call ms.src_to_obj,$(1),_js): \\'$$$$'\n' $(call ms.src_to_dep,$(1),_js)d > $(call ms.src_to_dep,$(1),_js)
-	@rm $(call ms.src_to_dep,$(1),_js)d
+	$(call ms.CALL_TOOL,$(ms.em_cxx),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js) $(2) -std=c++0x $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
 
 endef
 
@@ -523,6 +519,7 @@ ifeq (linux,$(ms.osname))
 endif
 ifeq (mac,$(ms.osname))
  ms.file_size=`stat -f %z $(1)`
+ ms.nlescape=\'$$'
 endif
 
 
@@ -648,11 +645,11 @@ $(ms.INTERMEDIATE_DIR)/auto_gen/resource_list.cpp: $(RESOURCES)
 	@echo "" >> $@
 	@echo "namespace mutantspider {" >> $@
 	@echo "" >> $@
-	@echo "$(ms.rez_decl)" | sed 's/; /;/g' | sed 's/;/;\'$$'\n/g' >> $@
+	@echo "$(ms.rez_decl)" | sed 's/; /;/g' | sed G >> $@
 	@echo "" >> $@
-	@echo "$(ms.dir_init_code)" | sed 's/; /;/g' | sed 's/{{COMMA}}/,/g' | sed 's/{{COMMAN}}/,\'$$'\n/g' | sed 's/{{NL}}/\'$$'\n/g' | sed 's/;/;\'$$'\n/g' | sed 's/^ *//g' >> $@
+	@echo "$(ms.dir_init_code)" | sed 's/; /;/g' | sed 's/{{COMMA}}/,/g' | sed 's/{{COMMAN}}/,$(ms.nlescape)\n/g' | sed 's/{{NL}}/$(ms.nlescape)\n/g' | sed 's/;/;$(ms.nlescape)\n/g' | sed 's/^ *//g' >> $@
 	@echo "const rez_dir_ent rez_root_dir_ents[] = {" >> $@
-	@echo "$(ms.root_initializer)" | sed 's/; /;/g' | sed 's/{{COMMA}}/,/g' | sed 's/{{COMMAN}}/,\'$$'\n/g' | sed 's/;/;\'$$'\n/g' >> $@
+	@echo "$(ms.root_initializer)" | sed 's/; /;/g' | sed 's/{{COMMA}}/,/g' | sed 's/{{COMMAN}}/,$(ms.nlescape)\n/g' | sed 's/;/;$(ms.nlescape)\n/g' >> $@
 	@echo "};" >> $@
 	@echo "" >> $@
 	@echo "const rez_dir rez_root_dir = { $(words $(ms.root_initializer)), &rez_root_dir_ents[0] };" >> $@
