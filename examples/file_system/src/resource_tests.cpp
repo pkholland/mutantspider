@@ -176,7 +176,7 @@ std::pair<int,int> resource_tests(FileSystemInstance* inst)
     else
         inst->PostMessage(LINE_PFX + "chmod(\"/resources/file2.txt\", 0666) correctly failed with errno = EROFS");
     
-    #if !defined(__native_client__) || PPAPI_RELEASE >= 3900  // currently crashing in 39!
+    #if !defined(__native_client__) || PPAPI_RELEASE > 39  // currently crashing in 39!
     // are we correctly blocked from trying to utime resources/file2.txt?
     ++num_tests_run;
     rslt = utime("/resources/file2.txt", 0);
