@@ -45,6 +45,15 @@
   (persistent_tests.cpp and resource_tests.cpp) that generated the printed line.
   <span class="heading">BOLD</span> lines are just information about the tests. Thes are not tests
   themselves.</p>
+  <p>Note that as of this writing the PNaCl libraries tend to incorrectly support access permissions
+  in the persistent file system (html5fs) causing failers in these tests.  The asm.js libraries have
+  incomplete support for user-installed file systems causing failures to set errno correctly for
+  certain cases.  This results in failures in the Resource tests.  The Mutantspider file system
+  support code for both asm.js and PNaCl has a missing feature of not reporting when background writes
+  to the persistent file system have completed.  The "big_file" persistent tests will show this bug if
+  you navigate away from the page too soon after letting it start writing.  The error is reported the
+  next time you view the page (when it is in the "Data previously stored" state) as the file size not
+  being right.</p>
   <div id="fs_test" style="width:100%;height:1px"></div>
   <div id="test_output" style="margin-top:30px;font-family:monospace"></div>
 </body>
