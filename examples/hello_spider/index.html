@@ -13,9 +13,13 @@
   <h1>Hello Spider</h1>
   <h2>Status: <code id="statusField">NO-STATUS</code></h2>
   <p>Click and drag in the red box below.<br><br>The mouse tracking and updating
-  are implemented using simple C++ in the <code>hello_spider.cpp</code> file.  See the
-  <code>Paint</code> method for the code that generates the black dot, and the
-  <code>HandleInputEvent</code> method for tracking the mouse position.  On every mouse
+  are implemented using simple C++ in the
+  <a href="https://github.com/pkholland/mutantspider/blob/master/examples/hello_spider/hello_spider.cpp">
+  <code>hello_spider.cpp</code></a> file.  See the
+  <a href="https://github.com/pkholland/mutantspider/blob/master/examples/hello_spider/hello_spider.cpp#L142-L195">
+  <code>Paint</code></a> method for the code that generates the black dot, and the
+  <a href="https://github.com/pkholland/mutantspider/blob/master/examples/hello_spider/hello_spider.cpp#L79-L121">
+  <code>HandleInputEvent</code></a> method for tracking the mouse position.  On every mouse
   event the <code>mouse_loc_x_</code> and <code>mouse_loc_y_</code> member variables are
   upated from the event information passed in by the browser.  Then a call to <code>Paint</code>
   is issued.  <code>Paint</code> walks all pixels, computing the distance from that pixel
