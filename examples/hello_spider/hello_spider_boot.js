@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
     }
 
     // called by mutantspider.initializeElement when the plugin-element is ready, as
-    // we as several other interesting points
+    // well as several other interesting events
     function my_on_ready(info)
     {
         if (info.status == 'loading')
