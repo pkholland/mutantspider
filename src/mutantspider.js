@@ -27,7 +27,7 @@ var Module;
 (function (scope) {
     'use strict';
  
-    if (scope.mutantspider != undefined)
+    if (scope.mutantspider)
         return;
  
     // internal function
@@ -45,17 +45,17 @@ var Module;
     {
         function starts_with(full_str, sub_str)
         {
-            return full_str.substring(0,sub_str.length) == sub_str;
+            return full_str.substring(0,sub_str.length) === sub_str;
         }
  
-        if ((typeof msg == 'string') && (msg.charAt(0) == '#'))
+        if ((typeof msg === 'string') && (msg.charAt(0) === '#'))
         {
             var tok = '#command:';
             if (starts_with(msg,tok))
             {
                 msg = msg.substring(tok.length, msg.lengh);
                 var exe_type;
-                if (nacl_moduleEl != null)
+                if (nacl_moduleEl)
                     exe_type = 'PNaCl';
                 else
                     exe_type = 'Javascript';
@@ -77,6 +77,17 @@ var Module;
             console.log('unrecognized command message: ' + msg);
             return;
         }
+        
+        if ((msg instanceof Object) && msg.cb_index) {
+            var cb = callback_completions[msg.cb_index];
+            if (typeof cb === 'function') {
+                cb(msg.data1, msg.data2);
+                if (msg.is_final)
+                    delete callback_completions[msg.cb_index];
+            }
+            return;
+        }
+        
         main_on_status({status: 'message', message: msg});
     }
  
@@ -184,11 +195,11 @@ var Module;
             tmp_scale_elm,
             computed_is_clamped = false,
             is_Uint8ClampedArray,
-            httpRequests = new Object(),
+            httpRequests = {},
             httpRequestIndex = 0,
             initialize;
             
-        // return the mutantspider event modifies of the given event
+        // return the mutantspider event modifiers of the given event
         function getModifiers(evt)
         {
             var modifiers = 0;
@@ -242,35 +253,35 @@ var Module;
         function jsMouseDown(evt)
         {
             if (mouse_proc(MS_INPUTEVENT_TYPE_MOUSEDOWN, getTimeStame(evt), getModifiers(evt), evt.button,
-                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) != 0)
+                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) !== 0)
                 evt.stopPropagation();
         }
         
         function jsMouseMove(evt)
         {
             if (mouse_proc(MS_INPUTEVENT_TYPE_MOUSEMOVE, getTimeStame(evt), getModifiers(evt), evt.button,
-                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) != 0)
+                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) !== 0)
                 evt.stopPropagation();
         }
         
         function jsMouseOver(evt)
         {
             if (mouse_proc(MS_INPUTEVENT_TYPE_MOUSEENTER, getTimeStame(evt), getModifiers(evt), evt.button,
-                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) != 0)
+                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) !== 0)
                 evt.stopPropagation();
         }
         
         function jsMouseOut(evt)
         {
             if (mouse_proc(MS_INPUTEVENT_TYPE_MOUSELEAVE, getTimeStame(evt), getModifiers(evt), evt.button,
-                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) != 0)
+                        evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) !== 0)
                 evt.stopPropagation();
         }
         
         function jsMouseUp(evt)
         {
             if (mouse_proc(MS_INPUTEVENT_TYPE_MOUSEUP, getTimeStame(evt), getModifiers(evt), evt.button,
-                    evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) != 0)
+                    evt.pageX - ele_offsetX, evt.pageY - ele_offsetY, 1, getMovementX(evt), getMovementY(evt)) !== 0)
                 evt.stopPropagation();
         }
         
@@ -342,7 +353,7 @@ var Module;
             writeTouches(evt.targetTouches,addr4);
             writeTouches(evt.changedTouches,addr4);
 
-            if (touch_proc(type, 0/*getTimeStamp(evt)*/, getModifiers(evt), addr) != 0)
+            if (touch_proc(type, 0/*getTimeStamp(evt)*/, getModifiers(evt), addr) !== 0)
                 evt.preventDefault();
 
             Module._free(addr);
@@ -409,7 +420,7 @@ var Module;
             var e = element;
             ele_offsetX = 0;
             ele_offsetY = 0;
-            while (e != null)
+            while (e)
             {
                 ele_offsetX += e.offsetLeft;
                 ele_offsetY += e.offsetTop;
@@ -469,7 +480,7 @@ var Module;
                     }
                 }
             }
-            mutantspider.set_using_web_gl((init_flags & MS_FLAGS_WEBGL_SUPPORT) != 0);
+            mutantspider.set_using_web_gl((init_flags & MS_FLAGS_WEBGL_SUPPORT) !== 0);
 
             // if we can't use webgl, then we do a little of our own double-buffered
             // rendering and so need to create a second canvas for that.
@@ -620,9 +631,9 @@ var Module;
         function open_http_request(id, method, urlAddr, callbackAddr, user_data)
         {
             var xhr = httpRequests[id];
-            if (typeof xhr === 'undefined')
+            if (!xhr)
                 do_callback(callbackAddr, user_data, MS_ERROR_BADARGUMENT);
-            else if (typeof xhr.c_callback !== 'undefined')
+            else if (xhr.c_callback)
                 do_callback(callbackAddr, user_data, MS_ERROR_INPROGRESS);
             try
             {
@@ -635,7 +646,7 @@ var Module;
                 {
                     var cb = this.c_callback;
                     delete this.c_callback;
-                    if (this.status == 200 || this.status == 0)	// status == 0 is a firefox bug (perhaps only with blob urls??)
+                    if (this.status === 200 || this.status === 0)	// status === 0 is a firefox bug (perhaps only with blob urls??)
                     {
                         this.c_buffer = this.response;
                         this.c_read_pos = 0;
@@ -686,13 +697,13 @@ var Module;
         // to copy.
         function read_http_response(id, buffer, len)
         {
-            if (len == 0)
+            if (len === 0)
                 return 0;
             var xhr = httpRequests[id];
-            if (typeof xhr === 'undefined')
+            if (!xhr)
                 return MS_ERROR_BADARGUMENT;
             var buf = xhr.c_buffer;
-            if (typeof buf === 'undefined')
+            if (!buf)
                 return MS_OK_COMPLETIONPENDING;
                 
             var rpos = xhr.c_read_pos;
@@ -702,7 +713,7 @@ var Module;
                 len = lenAvail;
             var retLen = len;
             
-            if (((buffer & 3) == 0) && ((rpos & 3) == 0))	// both are 4-byte aligned, copy 4 at a time as many as we can
+            if (((buffer & 3) === 0) && ((rpos & 3) === 0))	// both are 4-byte aligned, copy 4 at a time as many as we can
             {
                 var thisLen = len >> 2;
                 var u32 = new Uint32Array(buf,0,thisLen);
@@ -723,7 +734,7 @@ var Module;
             }
             
             xhr.c_read_pos += retLen;
-            if (xhr.c_read_pos == buf.byteLength)
+            if (xhr.c_read_pos === buf.byteLength)
                 delete xhr.c_buffer;
             
             return retLen;
@@ -743,9 +754,19 @@ var Module;
             mutantspider.post_js_message(Module.Pointer_stringify(msgAddr));
         }
         
+        function post_completion_message(task_index, buffer1, len1, buffer2, len2, is_final)
+        {
+            mutantspider.post_js_message({
+                                        cb_index: task_index,
+                                        is_final: is_final,
+                                        data1: Module.HEAP8.buffer.slice(buffer1, buffer1+len1),
+                                        data2: Module.HEAP8.buffer.slice(buffer2, buffer2+len2)
+                                        });
+        }
+        
         function update_view(clientBounds)
         {
-            if (change_view_proc != undefined)
+            if (change_view_proc)
                 change_view_proc(0,0,clientBounds.width, clientBounds.height);
         }
         
@@ -753,6 +774,7 @@ var Module;
             set_initialize:         set_initialize,
             initialize:             initialize,
             post_string_message:    post_string_message,
+            post_completion_message:	post_completion_message,
             bind_graphics:          bind_graphics,
             back_buffer_clear:      back_buffer_clear,
             stretch_blit_pixels:    stretch_blit_pixels,
@@ -769,6 +791,8 @@ var Module;
     }());
 
     var nacl_moduleEl;
+    var callback_index = 1;
+    var callback_completions = {};
 
     // send the given 'msg' to the component.  Supports both the case where the
     // component is nacl/pnacl, as well as asm.js -- although the support is
@@ -781,34 +805,51 @@ var Module;
     // supports the case where a value is another object, but in this case it simply
     // copies that contents of that object as if it were a Uint8Array into raw memory
     // in Module.HEAP.  This form can be used on values that are things like typed arrays.
-    function send_command(msg)
+    //
+    // if 'completion' is not null then it should be a function object that looks like:
+    //
+    //      function my_completion(data1, data2, is_final) { ... }
+    //
+    //  if the given 'msg' is implemented in the component as something that produces
+    //  an answer of some kind, then it can use 'data1' and 'data2' (which will both
+    //  be ArrayBuffers) to "return" the result.  If the component implements this
+    //  msg as something allowing for multiple answers, it can use 'is_final' to indicate
+    //  the last answer it will deliver.
+    function send_command(msg, completion)
     {
-        if (nacl_moduleEl != null)
+        if (completion && (msg instanceof Object))
+        {
+          callback_completions[callback_index] = completion;
+          msg['__callback_index__'] = callback_index.toString();
+          ++callback_index;
+        }
+        
+        if (nacl_moduleEl)
         {
             nacl_moduleEl.postMessage(msg);
         }
         else
         {
-            if ( typeof msg == 'object' )
+            if (msg instanceof Object)
             {
                 var args = [];
                 var argDesc = [];
                 args.push(0);
                 argDesc.push('number');
                 var len = 0;
-                for ( var prop in msg )
+                for (var prop in msg)
                 {
-                    if (typeof msg[prop] == 'string')
+                    if (typeof msg[prop] === 'string' || typeof msg[prop] === 'number')
                     {
                         len += 1;
                         args.push(prop);
                         args.push(0);
-                        args.push(msg[prop]);
+                        args.push(msg[prop].toString());
                         argDesc.push('string');
                         argDesc.push('number');
                         argDesc.push('string');
                     }
-                    else if (typeof msg[prop] == 'object')
+                    else if (msg[prop] instanceof Object)
                     {
                         len += 1;
                         args.push(prop);
@@ -817,9 +858,7 @@ var Module;
                         var addr = Module._malloc(obj_len);
                         var ar = new Uint8Array(msg[prop]);
                         for (var i = 0; i < obj_len; i++)
-                        {
                             Module.HEAPU8[addr+i] = ar[i];
-                        }
                         args.push(addr);
                         argDesc.push('string');
                         argDesc.push('number');
@@ -829,7 +868,7 @@ var Module;
                         throw "invalid type in send_command: " + typeof msg[prop];
                 }
                 args[0] = len;
-                Module.ccall( 'MS_MessageProc', 'null', argDesc, args );
+                Module.ccall('MS_MessageProc', 'null', argDesc, args);
             }
         }
     }
@@ -901,7 +940,7 @@ var Module;
         main_on_status = on_status;
 
         // does the browser support pnacl (probably just chrome)?
-        if (navigator.mimeTypes['application/x-pnacl'] !== undefined)
+        if (navigator.mimeTypes['application/x-pnacl'])
         {
             using_web_gl = true;
             on_status({status: 'loading', exe_type: 'PNaCl'});
@@ -911,7 +950,10 @@ var Module;
             element.addEventListener('crash',   function(event){on_status({status: 'crash',   message: event});}, true);
 
             nacl_moduleEl = document.createElement('embed');
-            nacl_moduleEl.setAttribute('src', params.name + '.nmf');
+            var src_name = params.name + '.nmf';
+            if (params.hashes && params.hashes.nmf)
+              src_name = src_name + "." + params.hashes.nmf;
+            nacl_moduleEl.setAttribute('src', src_name);
             nacl_moduleEl.setAttribute('type', 'application/x-pnacl');
             nacl_moduleEl.setAttribute('style', 'background-color:#808080;width:100%;height:100%');
             nacl_moduleEl.setAttribute('locale', navigator.language );
@@ -943,12 +985,15 @@ var Module;
 
             var scriptEl = document.createElement('script');
             scriptEl.type = 'text/javascript';
-            scriptEl.src = params.name + '.js';
+            var src_name = params.name + '.js';
+            if (params.hashes && params.hashes.js)
+              src_name = src_name + "." + params.hashes.js;
+            scriptEl.src = src_name;
             scriptEl.setAttribute('style', 'background-color:#808080;width:inherit;100%:100%');
             scriptEl.onload = function()
             {
                 on_status({status: 'loading', exe_type: 'JavaScript Heap File'});
-                asm.set_initialize(element, on_status);
+                asm.set_initialize(element);
             };
             scriptEl.addEventListener('error', function(event){on_status({status: 'error', message: event});}, true);
             element.appendChild(scriptEl);
@@ -963,7 +1008,7 @@ var Module;
             var curBounds = element.getBoundingClientRect();
             setInterval( function() {
                                         var cb = element.getBoundingClientRect();
-                                        if (cb.width != curBounds.width || cb.height != curBounds.height)
+                                        if (cb.width !== curBounds.width || cb.height !== curBounds.height)
                                         {
                                             asm.update_view(cb);
                                             curBounds = cb;
@@ -974,7 +1019,7 @@ var Module;
         }
     }
 
-    scope.mutantspider = new Object();
+    scope.mutantspider = {};
     scope.mutantspider['asm_internal'] = asm;
     scope.mutantspider['set_using_web_gl'] = set_using_web_gl;
     scope.mutantspider['post_js_message'] = post_js_message;

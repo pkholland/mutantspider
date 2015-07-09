@@ -39,6 +39,10 @@ var LibraryMutantspider = {
   ms_post_string_message: function(msgAddr) {
     mutantspider.asm_internal.post_string_message(msgAddr);
   },
+  ms_post_completion_message__sig: 'viiiiii',
+  ms_post_completion_message: function(task_index, buffer1, len1, buffer2, len2, is_final) {
+    mutantspider.asm_internal.post_completion_message(task_index, buffer1, len1, buffer2, len2, is_final);
+  },
   ms_bind_graphics__sig: 'vii',
   ms_bind_graphics: function(width, height) {
     mutantspider.asm_internal.bind_graphics(width, height);

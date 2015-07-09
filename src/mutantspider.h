@@ -69,6 +69,23 @@
             pp::Instance::PostMessage(msg);
         }
         
+        void PostCompletion(int task_index, const void* buffer1, size_t len1, const void* buffer2, size_t len2, bool is_final)
+        {
+            pp::VarArrayBuffer  buff1(len1);
+            memcpy(buff1.Map(), buffer1, len1);
+            buff1.Unmap();
+            pp::VarArrayBuffer  buff2(len2);
+            memcpy(buff2.Map(), buffer2, len2);
+            buff2.Unmap();
+            
+            pp::VarDictionary dict;
+            dict.Set("cb_index", task_index);
+            dict.Set("is_final", (int)is_final);
+            dict.Set("data1", buff1);
+            dict.Set("data2", buff2);
+            pp::Instance::PostMessage(dict);
+        } 
+        
         virtual void AsyncStartupComplete() {}
 
     };
@@ -298,6 +315,7 @@
     extern "C" int  ms_read_http_response(int id, void* buffer, int bytes_to_read);
     extern "C" void ms_timed_callback(int milli, void (*callbackAddr)(void*, int32_t), void* user_data, int result);
     extern "C" void ms_post_string_message(const char*);
+    extern "C" void ms_post_completion_message(int task_index, const void* buffer1, int len1, const void* buffer2, int len2, int is_final);
     extern "C" void ms_bind_graphics(int width, int height);
     extern "C" void ms_initialize(void);
     extern "C" void ms_mkdir(const char* path);
@@ -908,6 +926,11 @@
                   m_map(map)
             {}
             
+            Var(const std::vector<std::string>& arr)
+            	: m_type(MS_VARTYPE_ARRAY),
+            	  m_array(arr)
+            {}
+            
             #if 0
             Var(const void* array_buff_data, size_t len)
                 : m_type(MS_VARTYPE_ARRAY_BUFFER),
@@ -951,7 +974,22 @@
             bool		m_bool;
             int32_t		m_i32;
             std::map<std::string, std::string>	m_map;
-
+			std::vector<std::string>			m_array;
+        };
+        
+        class VarArray : public Var
+        {
+        public:
+        	VarArray(const Var& v) : Var(v) {}
+        	Var Get(uint32_t index) const
+        	{
+        		return index < m_array.size() ? Var(m_array[index]) : Var();
+        	}
+        	
+        	uint32_t GetLength() const
+        	{
+        		return m_array.size();
+        	}
         };
         
         // see pp::VarDictionary
@@ -959,10 +997,19 @@
         {
         public:
             VarDictionary(const Var& v) : Var(v) {}
-            Var Get(const char* msg)
+            Var Get(const char* msg) const
             {
                 auto it = m_map.find(msg);
                 return it == m_map.end() ? Var() : Var(it->second);
+            }
+            
+            VarArray GetKeys() const
+            {
+            	std::vector<std::string>	keys(m_map.size());
+            	int							i = 0;
+            	for (auto it = m_map.begin(); it != m_map.end(); it++, i++)
+            		keys[i] = it->first;
+            	return Var(keys);
             }
         };
         
@@ -1570,6 +1617,11 @@
             std::string msg("#command:");
             msg += command;
             ms_post_string_message(msg.c_str());
+        }
+        
+        void PostCompletion(int task_index, const void* buffer1, size_t len1, const void* buffer2, size_t len2, bool is_final)
+        {
+			ms_post_completion_message(task_index, buffer1, len1, buffer2, len2, is_final);
         }
         
         bool BindGraphics(const mutantspider::Graphics2D& g2d)
