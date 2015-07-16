@@ -424,7 +424,7 @@ ms.DO_NEXE?=0
 #
 ifneq (0,$(ms.DO_NEXE))
 define ms.nacl_linker_rule
-$(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl))
+$(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(sort $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl)))
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
 	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
 	$(ms.mkdir) -p $$(@D)
@@ -434,7 +434,7 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).nexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl
 endef
 else
 define ms.nacl_linker_rule
-$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl))
+$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl.opts $(sort $(foreach src,$(filter-out $(pnacl_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_pnacl)))
 	@rm -f $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a
 	$(call ms.CALL_TOOL,$(ms.pnacl_ar), -cr $(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a $$(filter-out %.opts,$$^),$(ms.INTERMEDIATE_DIR)/$(CONFIG)/lib$(1).a)
 	$(ms.mkdir) -p $$(@D)
@@ -452,7 +452,7 @@ endif
 #	Note that the this target will ignore any source file that is included in $(emcc_EXCLUDE)
 #
 define ms.em_linker_rule
-$(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js))
+$(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(sort $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js)))
 	$(ms.mkdir) -p $$(@D)
 	$(call ms.CALL_TOOL,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
 
