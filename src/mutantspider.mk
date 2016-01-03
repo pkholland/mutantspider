@@ -143,6 +143,7 @@ ms.pnacl_ar := $(ms.pnacl_tc_bin)/pnacl-ar
 ms.pnacl_finalize := $(ms.pnacl_tc_bin)/pnacl-finalize
 ms.pnacl_translate := $(ms.pnacl_tc_bin)/pnacl-translate
 ms.pnacl_strip := $(ms.pnacl_tc_bin)/pnacl-strip
+ms.pnacl_compress := $(ms.pnacl_tc_bin)/pnacl-compress
 
 #
 # should we include the Debug or Release lib path?
@@ -216,12 +217,13 @@ endif
 #
 ifeq (release,$(CONFIG))
  ms.do_strip = $(call ms.CALL_TOOL,$(1),-o $(2).strip $(2),$(2)) && rm $(2) && mv $(2).strip $(2)
+ ms.do_compress = $(call ms.CALL_TOOL,$(ms.pnacl_compress),$(1),$(1))
 endif
 
 #
 # compiler flags that are used in release and debug builds for all compilers
 #
-CFLAGS_release+=-O2 -DNDEBUG
+CFLAGS_release+=-DNDEBUG
 # REVISIT : Should be -O0 for debug but that is making some binaries too big.
 CFLAGS_debug+=-g
 
@@ -241,11 +243,14 @@ CFLAGS_emcc_debug+=-DNDEBUG
 # compiler and linker flags that are used in release emcc
 # TODO: check on --closure 1
 #
-CFLAGS_emcc_release+=-O2
-LDFLAGS_emcc_release+=-O2 --closure 0
+CFLAGS_emcc_release+=-O3
+LDFLAGS_emcc_release+=-O3 --closure 0
 
 CFLAGS_emcc_debug+=-s ASSERTIONS=1
 LDFLAGS_emcc_debug+=-s ASSERTIONS=1
+
+CFLAGS_pnacl_release+=-O2
+LDFLAGS_pnacl_release+=-O2
 
 #
 # If your build needs some additional symbols exported in the emcc build, you can add them by defining them
@@ -441,6 +446,7 @@ $(ms.OUT_DIR)/$(CONFIG)/$(1).pexe: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_pnacl
 	$(call ms.CALL_TOOL,$(ms.pnacl_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_pnacl) $(LDFLAGS_pnacl_$(CONFIG)) -L$(ms.lib_root)/$(ms.NACL_LIB_PATH) -L$(ms.INTERMEDIATE_DIR)/$(CONFIG) -o $$@ -lppapi -lppapi_cpp -l$(1) -lppapi -lppapi_cpp -lnacl_io $(foreach lib,$(3),-l$(lib)),$(ms.OUT_DIR)/$(CONFIG)/$(1).pexe)
 	$(call ms.do_strip,$(ms.pnacl_strip),$$@)
 	$(call ms.CALL_TOOL,$(ms.pnacl_finalize),$$@,$$@)
+	$(call ms.do_compress,$$@)
 
 endef
 endif
