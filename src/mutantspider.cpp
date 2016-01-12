@@ -19,6 +19,8 @@ const char* locale()
 	return &gLocale[0];
 }
 
+MS_AppInstancePtr gAppInstance;
+
 }
 
 #if defined(EMSCRIPTEN)
@@ -27,7 +29,6 @@ const char* locale()
 #include <stdarg.h>
 
 static MS_Module* gModule;
-static MS_AppInstancePtr gAppInstance;
 
 namespace pp
 {
@@ -39,15 +40,15 @@ extern "C" {
 void MS_Init(int init_flags)
 {
 	gModule = pp::CreateModule();
-	gAppInstance = gModule->CreateInstance(0);
+	mutantspider::gAppInstance = gModule->CreateInstance(0);
     const char* argn = "has_webgl";
     const char* argv = (init_flags & MS_FLAGS_WEBGL_SUPPORT) ? "true" : "false";
-	gAppInstance->Init(1, &argn, &argv);
+	mutantspider::gAppInstance->Init(1, &argn, &argv);
 }
 
 int MS_MouseProc( int eventType, int timeStamp, int modifiers, int button, int positionX, int positionY, int clickCount, int movementX, int movementY )
 {
-	if ( gAppInstance )
+	if ( mutantspider::gAppInstance )
 	{
 		mutantspider::InputEvent evt(
 					(MS_InputEvent_Type)eventType,
@@ -57,14 +58,14 @@ int MS_MouseProc( int eventType, int timeStamp, int modifiers, int button, int p
 					mutantspider::Point(positionX, positionY),
 					(int32_t)clickCount,
 					mutantspider::Point(movementX, movementY) );
-		return gAppInstance->HandleInputEvent(evt);
+		return mutantspider::gAppInstance->HandleInputEvent(evt);
 	}
 	return 0;
 }
 
 int MS_TouchProc( int eventType, int timeStamp, int modifiers, int* touchData )
 {
-	if ( gAppInstance )
+	if ( mutantspider::gAppInstance )
 	{		
 		mutantspider::MS_TouchPoint	touches[5];
 
@@ -89,20 +90,20 @@ int MS_TouchProc( int eventType, int timeStamp, int modifiers, int* touchData )
 					(uint32_t)modifiers,
 					(uint32_t)numTouches,
 					&touches[0]);
-		return gAppInstance->HandleInputEvent(evt);
+		return mutantspider::gAppInstance->HandleInputEvent(evt);
 	}
 	return 0;
 }
 
 void MS_FocusProc( int focus )
 {
-	if ( gAppInstance )
-		gAppInstance->DidChangeFocus(focus != 0);
+	if ( mutantspider::gAppInstance )
+		mutantspider::gAppInstance->DidChangeFocus(focus != 0);
 }
 
 void MS_KeyProc(int eventType, int timeStamp, int modifiers, int keycode, int keytext)
 {
-	if ( gAppInstance )
+	if ( mutantspider::gAppInstance )
 	{
 		char	buff[2];
 		buff[0] = (char)keytext;
@@ -114,16 +115,16 @@ void MS_KeyProc(int eventType, int timeStamp, int modifiers, int keycode, int ke
 					(uint32_t)modifiers,
 					(uint32_t)keycode,
 					v );
-		gAppInstance->HandleInputEvent(evt);
+		mutantspider::gAppInstance->HandleInputEvent(evt);
 	}
 }
 
 void MS_DidChangeView(int x, int y, int width, int height)
 {
-	if ( gAppInstance )
+	if ( mutantspider::gAppInstance )
 	{
 		mutantspider::Rect view_rect(x, y, width, height);
-		gAppInstance->DidChangeView(view_rect);
+		mutantspider::gAppInstance->DidChangeView(view_rect);
 	}
 }
 
@@ -154,7 +155,7 @@ void MS_MessageProc(int count, const char* k1, int vl1, const char* v1, const ch
 						const char* k5, int vl5, const char* v5, const char* k6, int vl6, const char* v6,
 						const char* k7, int vl7, const char* v7, const char* k8, int vl8, const char* v8 )
 {
-	if ( gAppInstance )
+	if ( mutantspider::gAppInstance )
 	{
 		std::map<std::string, std::string>	map;
 		DO_ONE_PAIR(1)
@@ -165,7 +166,7 @@ void MS_MessageProc(int count, const char* k1, int vl1, const char* v1, const ch
 		DO_ONE_PAIR(6)
 		DO_ONE_PAIR(7)
 		DO_ONE_PAIR(8)
-		gAppInstance->HandleMessage(mutantspider::Var(map));
+		mutantspider::gAppInstance->HandleMessage(mutantspider::Var(map));
 	}
 }
 
@@ -176,8 +177,8 @@ void MS_DoCallbackProc(void (*proc)(void*, int32_t), void* user_data, int32_t re
 
 void MS_AsyncStartupComplete()
 {
-    if (gAppInstance)
-        gAppInstance->AsyncStartupComplete();
+    if (mutantspider::gAppInstance)
+        mutantspider::gAppInstance->AsyncStartupComplete();
 }
 
 }

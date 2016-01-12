@@ -26,6 +26,10 @@
 #undef PostMessage
 #endif
 
+#include <sstream>
+#include <iomanip>
+#include <vector>
+
 #if defined(__native_client__)
 
     #include "ppapi/cpp/completion_callback.h"
@@ -1810,4 +1814,33 @@ extern const rez_dir_ent rez_root_dir_ent;
 }
 
 #endif
+
+namespace mutantspider {
+
+extern MS_AppInstancePtr gAppInstance;
+
+template<typename Func>
+static void output(const char* file_name, int line_num, Func func)
+{
+    if (!gAppInstance)
+        return;
+    
+    std::ostringstream format;
+
+    // (file_name, line_num)
+    std::ostringstream loc;
+    loc << "("<< file_name << ", " << line_num << ")";
+    const int width = 35;
+    format << std::setiosflags(std::ios_base::left) << std::setfill(' ') << std::setw(width) << loc.str();
+
+    // the "body" of the anon_log message
+    func(format);
+
+    gAppInstance->PostMessage(format.str().c_str());
+}
+
+}
+
+#define ms_log(_body) mutantspider::output(__FILE__, __LINE__, [&](std::ostream& formatter) {formatter << _body;})
+
 
