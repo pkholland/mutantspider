@@ -586,11 +586,6 @@ endef
 endif
 
 #
-# append module launcher .js snippet
-#
-ms.append_js=@cat $(ms.this_make_dir)ww_module_launcher.js >> $1
-
-#
 #	$1	unprefixed and unpostfixed final executable name
 #	$2	list of source files to compile and link
 #
@@ -600,7 +595,7 @@ define ms.em_linker_rule
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(sort $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js))) $$(ms.EM_LIBRARIES) $(ms.APPEND_JS)
 	$(ms.mkdir) -p $$(@D)
 	$(call ms.CALL_TOOL,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts %.js,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
-	$(call ms.append_js, $$@)
+	@cat $(ms.this_make_dir)start_worker.js >> $$@
 
 
 #
