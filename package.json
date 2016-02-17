@@ -1,0 +1,19 @@
+{
+  "name": "mutantspider",
+  "version": "0.0.1",
+  "description": "Mutantspider SDK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pkholland/mutantspider.git"
+  },
+  "author": "Paul Holland",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1.44",
+    "strongly-connected-components":"1.0.1",
+    "babelify":"6.2.0",
+    "browserify": "^10.2.1",
+    "uglifyify":"^3.0.1",
+    "minimist":"^1.2.0"
+  }
+}

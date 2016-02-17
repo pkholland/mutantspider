@@ -1,7 +1,7 @@
 Mutantspider Makefile System
 
-Audience: This document is mostly intended for people who want to _use_ the Mutantspider Makefile System.  For
-detailed information on how it works, please see the file mutantspider.mk
+Audience: This document is mostly intended for people who want to _use_ the Mutantspider Makefile System.
+For detailed information on how it works, please see the file mutantspider.mk
 
 
 The Mutantspider Makefile System is primarily implemented in the single file mutantspider.mk.  It is intended to be
@@ -11,7 +11,7 @@ part by cross-compiling C/C++ code into the various formats that are supported b
 asm.js and Google's Native Client.  In this system, executing 'make' produces multiple executables all from the same
 source files.
 
-Currently (2014/2/26) the Mutantspider Makefile System supports Emscripten (->asm.js) and NaCl "pnacl" (->.pexe).
+Currently (Jan 2016) the Mutantspider Makefile System supports Emscripten (asm.js) and NaCl "pnacl" (pexe).
 
 The most simplistic usage of MMS would be a Makefile that lived in the same directory as mutantspider.mk and looked
 like:
@@ -48,64 +48,65 @@ all: $(call ms.TARGET_LIST,$(BUILD_NAME))
 ###########################
 
 
-With just this much, were you to cd to the directory containing this Makefile (and mutantspider.mk, because this
-example has the two files in the same directory) and then type 'make' -- and assuming that your SOURCES all compiled
-correctly in all of the compilers -- you would get a directory named 'out' in this same directory, and in there you
-would have a directory named 'release', and in there you would get a set of myApp* files for each of the compilers
-that MMS supports. Currently this set would be myApp.js, myApp.js.mem, myApp.pexe, and myApp.nmf.
+With just this much, were you to cd to the directory containing this Makefile (and mutantspider.mk, because this example
+has the two files in the same directory) and then type 'make' -- and assuming that your SOURCES all compiled correctly
+in all of the compilers -- you would get a directory named 'out' in this same directory, and in there you would have a
+directory named 'release', and in there you would get a set of myApp* files for each of the compilers that MMS supports.
+Currently this set would be myApp.js, myApp.js.mem, myApp.pexe, and myApp.nmf.
 
-If you actually run the experiment above you are likely to see several errors and warnings when you try to execute
-make. mutantspider.mk requires, and checks for, certain things on your system.  If it finds something wrong with the
+If you actually run the experiment above you are likely to see several errors and warnings when you try to execute make.
+mutantspider.mk requires, and checks for, certain things on your system.  If it finds something wrong with the
 configuration it will tell you what is wrong and either stop, or just warn you that it is making a default decision
 about something depending on what condition it is checking for.
 
 Here are the REQUIREMENTS that mutantspider.mk checks for and stops if they are missing:
 ########################################################################################
 
-1)  The directory containing mutantspider.mk must also have a directory named "nacl_sdk_root".  This must either be
-    the root directory of whatever Pepper sdk (from Google's Native Client sdk) you want to use, or more realisticaly
-    a symlink to that directory.  This means you need to have an appropriate NaCl sdk installed on your machine
-    somewhere.
-    
+1)  Your environment must either have a variabled named NACL_SDK_ROOT, or the directory containing mutantspider.mk must
+    also have a directory named "nacl_sdk_root".  If you have a NACL_SDK_ROOT enviroment variable it must be defined
+    to the full path to whatever Pepper sdk (from Google's Native Client sdk) you want to use).  If you use a local
+    directory it must be this same Pepper sdk directory - or more realistically a symlink to that directory.  Both of
+    these mean that you need to have an appropriate NaCl sdk installed on your machine somewhere.
+
 2)  Your machine must have the Emscripten tool set installed with 'emcc' available in the path.
 
 Here are the things it will WARN about, but then make default decisions:
 ########################################################################
 
-1)  If your Makefile does not define ms.INTERMEDIATE_DIR prior to including mutantspider.mk it will assume and use
-    "obj" in the current directory.  Since the example above did not define this, you would see this warning if you
-    used this Makefile
+1)  If your Makefile does not define ms.INTERMEDIATE_DIR prior to including mutantspider.mk it will assume and use "obj"
+    in the current directory.  Since the example above did not define this, you would see this warning if you used this
+    Makefile
     
-2)  If your Makefile does not define ms.OUT_DIR prior to including mutantspider.mk it will assume and use "out"
-    in the current directory.  The Makefile above did not define this, so would have produced this warning, and it
-    is also why the various myApp.* files are in the "out" directory.
+2)  If your Makefile does not define ms.OUT_DIR prior to including mutantspider.mk it will assume and use "out" in the
+    current directory.  The Makefile above did not define this, so would have produced this warning, and it is also
+    why the various myApp.* files are in the "out" directory.
     
 There are also a few things that you can optionally set, but which have good-enough defaults that if you don't set
 them MMS just uses its default.  These are:
 ###########################################
 
-1)  CONFIG.  If this is not set prior to including mutantspider.mk then it will default to "release".  That is why
-    the example above produces its output in the "release" directory of "out".
+1)  CONFIG.  If this is not set prior to including mutantspider.mk then it will default to "release".  That is why the
+    example above produces its output in the "release" directory of "out".
     
-2)  V (for "verbose output"). If not set, mutantspider.mk defaults to V=0.  When V=0, while make is processing it
-    will show abbreviated lines for what tool is currently running and what file it is working on.  When V is anything
-    other than 0 it will show the full command lines that are executing.  For example, invoking make with "make V=1"
-    on the command line will cause it to output full command lines.
+2)  V (for "verbose output"). If not set, mutantspider.mk defaults to V=0.  When V=0, while make is processing it will
+    show abbreviated lines for what tool is currently running and what file it is working on.  When V is anything other
+    than 0 it will show the full command lines that are executing.  For example, invoking make with "make V=1" on the
+    command line will cause it to output full command lines.
     
 
 A few cool things that MMS does:
 ################################
 
-Dependency Tracking.  While not absolutely perfect in every possible situation, makefiles built with MMS will
-generally only compile what needs to be compiled each time.  In addition to automatically tracking header file
-dependencies it also tracks compiler and linker option changes.  If you change the compiler options you are using it
-will recompile everything.
+Dependency Tracking.  While not absolutely perfect in every possible situation, makefiles built with MMS will generally
+only compile what needs to be compiled each time.  In addition to automatically tracking header file dependencies it
+also tracks compiler and linker option changes.  If you change the compiler options you are using it will recompile
+everything.
 
 Supports multiple source files with the same name (for example, "utils.c"), as long as they are in different
 directories.
 
-Supports fully dependent makefiles so that parallel make works correctly.  Executing make like "make -j8" will
-cause it to compile 8 files in parallel (speeding up build times if you have an 8 core machine).
+Supports fully dependent makefiles so that parallel make works correctly.  Executing make like "make -j8" will cause it
+to compile 8 files in parallel (speeding up build times if you have an 8 core machine).
 
 Automatically provides reasonable compiler options for both "release" and "debug" builds for all of the compilers it
 supports.
@@ -118,9 +119,9 @@ mechanism for dealing with configurations, and uses this mechanism internally to
 Defining (or customizing) configurations:
 ##########################################
 
-Any single invocation of make in MMS uses a single "configuration".  This is simply the value of the CONFIG variable
-for that invocation of make.  If not specified, CONFIG will default to "release".  The value of the CONFIG variable
-affects the build in the following ways:
+Any single invocation of make in MMS uses a single "configuration".  This is simply the value of the CONFIG variable for
+that invocation of make.  If not specified, CONFIG will default to "release".  The value of the CONFIG variable affects
+the build in the following ways:
 
 1)  Intermediate and final output files are placed in directory named $(CONFIG) -- within the $(ms.INTERMEDIATE_DIR)
     or $(ms.OUT_DIR) directories.
@@ -154,26 +155,26 @@ certain compilers.
 Creating "component-like" Makefiles
 ###################################
 
-MMS is oriented towards a build system where all source files are compiled into a single executable.  It does not
-have formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide
-tools to automatically build them and link them together.  This is mostly because some of the compilers in the set
-that it supports do not have good mechanisms for these sorts of objects.
+MMS is oriented towards a build system where all source files are compiled into a single executable.  It does not have
+formal support for ideas like dll's and shared objects.  You can use them, but the MMS mechanisms don't provide tools to
+automatically build them and link them together.  This is mostly because some of the compilers in the set that it
+supports do not have good mechanisms for these sorts of objects.
 
 The idea instead is that logical groups of source files would have a dedicated <component>.mk and that the primary
 Makefile would be expected to include that file the same way it includes mutantspider.mk.
 
 Here are some guidelines to attempt to follow when writing such a makefile:
 
-1)  APPEND your sources to the $(SOURCES) variable.  This allows the primary Makefile to end up with a single
-    $(SOURCES) variable that contains the union of all component sources.  For example:
+1)  APPEND your sources to the $(SOURCES) variable.  This allows the primary Makefile to end up with a single $(SOURCES)
+    variable that contains the union of all component sources.  For example:
     
     SOURCES+=\
     mySource1.cpp\
     mySource2.cpp\
     mySource3.cpp
     
-2)  APPEND your custom include paths to the $(INC_DIRS) variable.  This should be done without the "-I" prefix used
-    by most compilers.  For example:
+2)  APPEND your custom include paths to the $(INC_DIRS) variable.  This should be done without the "-I" prefix used by
+    most compilers.  For example:
 
     INC_DIRS+=\
     myDirectory1\
@@ -181,9 +182,9 @@ Here are some guidelines to attempt to follow when writing such a makefile:
 
 3)  Use relative path's to all of your sources and include dir's and specify them so that they are relative to the
     original make directory $(CURDIR) -- not simply relative to the directory of your makefile.  This will require a
-    small bit of make-style computing to determine depending on the directory layout you are using for your
-    component. In a simple case where all of your files are in known locations that are subdirectories of where your
-    makefile is, you can do this by simply computing the directory of your makefile.
+    small bit of make-style computing to determine depending on the directory layout you are using for your component.
+    In a simple case where all of your files are in known locations that are subdirectories of where your makefile is,
+    you can do this by simply computing the directory of your makefile.
     
     Consider the following layout:
     
@@ -194,9 +195,9 @@ Here are some guidelines to attempt to follow when writing such a makefile:
             source2.cpp
             source2.h
             
-    where indentation represents directory structure.  If source1.cpp #includes source2.h then it is likely that
-    sub_dir will need to be included in INC_DIRS.  Both source1.cpp and source2.cpp need to be included in SOURCES.
-    The following make syntax will let you do this:
+    where indentation represents directory structure.  If source1.cpp #includes source2.h then it is likely that sub_dir
+    will need to be included in INC_DIRS.  Both source1.cpp and source2.cpp need to be included in SOURCES. The
+    following make syntax will let you do this:
     
     ##############################
     #
@@ -219,8 +220,8 @@ Here are some guidelines to attempt to follow when writing such a makefile:
     
     ###############################
     
-    Things get a little more complicated when the root of your directory is higher up than where your component.mk
-    file lives. But this is also not too bad.
+    Things get a little more complicated when the root of your directory is higher up than where your component.mk file
+    lives. But this is also not too bad.
     
     Consider the following layout:
     
@@ -236,9 +237,9 @@ Here are some guidelines to attempt to follow when writing such a makefile:
             
     In this case we want to figure out the directory that is one up from where we found it in the first example.  And
     while this can be done by just appending '../' to the end of what we found, that ends up being a little messy in
-    certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced.  For
-    example dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will
-    end up placing things in different directories unnecessarily if we don't simplify the representations of these
+    certain parts of MMS if there are multiple ways to specify a single directory that ends up being referenced. For
+    example dir1/dir2 is the same directory as dir1/dir2/dir3/..  But some of the object file handling in MMS will end
+    up placing things in different directories unnecessarily if we don't simplify the representations of these
     directories.  Here is a bit of make magic to clean these things up.
     
     ##############################
@@ -372,21 +373,21 @@ with a "/".  This is required.
 You can have any number of these resource files, although each will increase the size of your web app, and so your
 download, by the size of the resource file itself (plus some small amount of overhead).
 
-Mutanspider.mk defines a special target named "display_rez" that will print out all of the resource files you are
-using in the location that they will be available to fopen, along with the original source file that they come from.
+mutantspider.mk defines a special target named "display_rez" that will print out all of the resource files you are using
+in the location that they will be available to fopen, along with the original source file that they come from.
 Executing "make display_rez" will show you this list.  If you don't have any resources defined then it will tell you
 that you don't have any resources.
 
-NOTE: this mechanism in mutantspider.mk only works with the files defined it RESOURCES ---> at the time you include
-mutantspder.mk from your makefile <---  If you add to RESOURCES after including mutantspider.mk, whatever you add
-will not be included in the resource mechanism.  Your "include mutanspdider.mk" statement must come _after_ any
-statements that set SOURCES, INC_DIRS, or RESOURCES.
+NOTE: this mechanism in mutantspider.mk only works with the files defined in RESOURCES ---> at the time you include
+mutantspider.mk from your Makefile <---  If you add to RESOURCES after including mutantspider.mk, whatever you add will
+not be included in the resource mechanism.  Your "include mutantspider.mk" statement must come _after_ any statements
+that set SOURCES, INC_DIRS, or RESOURCES.
 
 
 A few more cool things you can do with MMS:
 ###########################################
 
-1. Removing specific files from specific builds.
+1.  Removing specific files from specific builds.
 
 Your project may contain source files that are needed in your pnacl build, but are not compilable in your emcc build.
 While you could solve this problem by adding #ifndef EMSCRIPTEN blocks inside the files themselves, sometimes you

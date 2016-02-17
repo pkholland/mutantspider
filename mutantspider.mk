@@ -1,16 +1,16 @@
 #
-#	MutantSpider core makefile.  See README.makefile for basic documentation
+#	Mutantspider core makefile.  See README.makefile for basic documentation
 #
 #	Some naming conventions:
-#		1) variables defined by MutantSpider will be in the ms "namespace".  That is, they will be of the form
-#			ms.VariableName
-#		2) exceptions to #1 include:
-#			a) variables that are reasonable to type on the command line, for example "V" and "CONFIG".
-#			b) the collection of compiler and linker flags (CFLAGS, CFLAGS_release, etc...).
-#		3) variable names in ms of the form ms.ALL_CAPS_AND_UNDERSCORES are expected to be "public"
-#			in the sense that code outside of mutantspider.mk can reasonably expect to use and manipulate those.
-#		4) variable names in ms of the form ms.lower_case are expected to be "private" and should not.
-#			be used outside of mutantspider.mk
+#   1) variables defined by Mutantspider will be in the ms "namespace".  That is, they
+#      will be of the form ms.VariableName
+#   2) exceptions to #1 include:
+#      a) variables that are reasonable to type on the command line, for example "V" and "CONFIG".
+#      b) the collection of compiler and linker flags (CFLAGS, CFLAGS_release, etc...).
+#   3) variable names in ms of the form ms.ALL_CAPS_AND_UNDERSCORES are expected to be "public"
+#      in the sense that code outside of mutantspider.mk can reasonably expect to use and manipulate those.
+#   4) variable names in ms of the form ms.lower_case are expected to be "private" and should not.
+#      be used outside of mutantspider.mk
 #
 #	TODO list:
 #		1) ms.do_strip is currently only running if the target is exactly "release".  Improve this somehow.
@@ -23,61 +23,82 @@
 ms.this_make_dir:=$(dir $(lastword $(MAKEFILE_LIST)))
 
 #
-# Make sure there is a nacl_sdk_root symlink directory
+# is this invocation of make doing any C/C++ compiling?
 #
-ifeq (,$(wildcard $(ms.this_make_dir)nacl_sdk_root))
- $(info *********************************)
- $(info 'nacl_sdk_root' directory missing)
- $(info Please create a symbolic link named 'nacl_sdk_root' in $(realpath $(ms.this_make_dir)),)
- $(info pointing to the NaCl/Pepper sdk directory you want to use.  For information on how to)
- $(info install the NaCl SDK, please google search for "Google Native Client SDK Download")
- $(error )
+ms.c_sources:=$(filter %.c %.cc %.cpp,$(SOURCES))
+
+#
+# if we have c/c++ sources, make sure the compilers are installed
+
+#
+# Make sure there is a nacl_sdk_root symlink directory or NACL_SDK_ROOT variable
+#
+ifeq (,$(NACL_SDK_ROOT))
+ ifneq (,$(ms.c_sources))
+  ifeq (,$(wildcard $(ms.this_make_dir)nacl_sdk_root))
+   $(info *********************************)
+   $(info 'nacl_sdk_root' directory missing)
+   $(info Please create a symbolic link named 'nacl_sdk_root' in $(realpath $(ms.this_make_dir)),)
+   $(info pointing to the NaCl/Pepper sdk directory you want to use.  For information on how to)
+   $(info install the NaCl SDK, please google search for "Google Native Client SDK Download")
+   $(error )
+  else
+   ms.nacl_sdk_root=$(wildcard $(ms.this_make_dir)nacl_sdk_root)
+  endif
+ endif
+else
+ ms.nacl_sdk_root=$(NACL_SDK_ROOT)
 endif
 
 #
 # Make sure the nacl_sdk_root directory looks like it is pointing to something reasonable
 #
-ifeq (,$(wildcard $(ms.this_make_dir)nacl_sdk_root/tools/oshelpers.py))
- $(info *********************************)
- $(info nacl_sdk_root is set to an invalid location: nacl_sdk_root -> $(realpath $(ms.this_make_dir)nacl_sdk_root))
- $(info which does not appear to contain the right files)
- ifneq (,$(wildcard $(ms.this_make_dir)nacl_sdk_root/pepper_*))
-  $(info Did you mean to point to one of these? -> $(foreach sdk,$(wildcard $(ms.this_make_dir)nacl_sdk_root/pepper_*),$(realpath $(sdk))))
+ifneq (,$(ms.nacl_sdk_root))
+ ifeq (,$(wildcard $(ms.nacl_sdk_root)/tools/oshelpers.py))
+  $(info *********************************)
+  $(info nacl_sdk_root is set to an invalid location: nacl_sdk_root -> $(realpath $(ms.nacl_sdk_root)))
+  $(info ms.nacl sdk_root: $(ms.nacl_sdk_root))
+  $(info which does not appear to contain the right files)
+  ifneq (,$(wildcard $(ms.nacl_sdk_root)/pepper_*))
+   $(info Did you mean to point to one of these? -> $(foreach sdk,$(wildcard $(ms.nacl_sdk_root)/pepper_*),$(realpath $(sdk))))
+  endif
+  $(error )
  endif
- $(error )
 endif
 
 #
 # Make sure emcc is installed and in the current path
 #
-ifeq (,$(shell which emcc))
- $(info *********************************)
- $(info Emscripten compiler 'emcc' is either not installed or not available in the current path)
- $(info ("which emcc" failed to find it).  For information on how to install the emscripten SDK)
- $(info please google search for "Emscripten Download".  For information on how to get a Macintosh)
- $(info terminal window to automatically run the "source emsdk_env.sh" tool suggested when you)
- $(info run "emsdk activate latest", google search for "bashrc equivalent mac" -- you will see)
- $(info information on using your .profile or .bash_profile file instead.  The emscripten)
- $(info compiler may require that you have 'python2' installed as a callable tool.  Macs)
- $(info don't normally come installed with that.  One workable solution is to create a symbolic)
- $(info link in /usr/bin/python2 that points to the normally installed /usr/bin/python, using)
- $(info a command line "sudo ln -s /usr/bin/python /usr/bin/python2" -- assuming that your)
- $(info python is installed at /usr/bin/python -- which you can see by executing)
- $(info "which python".  Note that the very first time you run the emscripten compiler on)
- $(info your system it will create various caches and run very slowly.  Be patient!)
- $(info )
- $(info now...)
- $(info )
- $(info If you want or need to carefully control the web development tools on your system)
- $(info you should be aware that running "source emsdk_env.sh" puts the emscripten bin path)
- $(info ahead of places like /usr/bin, and these emscripten tools come with their own version)
- $(info of a few tools like 'node' and 'npm'.  So any shell that sources emsdk_env.sh and)
- $(info then tries to execute an undecorated 'node', will be running the version from your)
- $(info emscripten sdk.  In a similar fashion, running 'npm' with -g will place the installed)
- $(info tools in your emscripten 'node/<version>/bin' directory.  This may, or may not be what)
- $(info you want.  For anyone who is not picky about where these tools are installed, or what)
- $(info version is installed, letting them install in this location could be a simple solution)
- $(error )
+ifneq (,$(ms.c_sources))
+ ifeq (,$(shell which emcc))
+  $(info *********************************)
+  $(info Emscripten compiler 'emcc' is either not installed or not available in the current path)
+  $(info ("which emcc" failed to find it).  For information on how to install the emscripten SDK)
+  $(info please google search for "Emscripten Download".  For information on how to get a Macintosh)
+  $(info terminal window to automatically run the "source emsdk_env.sh" tool suggested when you)
+  $(info run "emsdk activate latest", google search for "bashrc equivalent mac" -- you will see)
+  $(info information on using your .profile or .bash_profile file instead.  The emscripten)
+  $(info compiler may require that you have 'python2' installed as a callable tool.  Macs)
+  $(info don't normally come installed with that.  One workable solution is to create a symbolic)
+  $(info link in /usr/bin/python2 that points to the normally installed /usr/bin/python, using)
+  $(info a command line "sudo ln -s /usr/bin/python /usr/bin/python2" -- assuming that your)
+  $(info python is installed at /usr/bin/python -- which you can see by executing)
+  $(info "which python".  Note that the very first time you run the emscripten compiler on)
+  $(info your system it will create various caches and run very slowly.  Be patient!)
+  $(info )
+  $(info now...)
+  $(info )
+  $(info If you want or need to carefully control the web development tools on your system)
+  $(info you should be aware that running "source emsdk_env.sh" puts the emscripten bin path)
+  $(info ahead of places like /usr/bin, and these emscripten tools come with their own version)
+  $(info of a few tools like 'node' and 'npm'.  So any shell that sources emsdk_env.sh and)
+  $(info then tries to execute an undecorated 'node', will be running the version from your)
+  $(info emscripten sdk.  In a similar fashion, running 'npm' with -g will place the installed)
+  $(info tools in your emscripten 'node/<version>/bin' directory.  This may, or may not be what)
+  $(info you want.  For anyone who is not picky about where these tools are installed, or what)
+  $(info version is installed, letting them install in this location could be a simple solution)
+  $(error )
+ endif
 endif
 
 #
@@ -130,10 +151,11 @@ ms.EMCC_CLOSURE_COMPILER := $(shell which emcc | sed 's:\(^.*\)emcc$$:\1third_pa
 
 # using a few tools from the nacl sdk
 
-ms.getos := python $(ms.this_make_dir)nacl_sdk_root/tools/getos.py
+ifneq (,$(ms.nacl_sdk_root))
+ms.getos := python $(ms.nacl_sdk_root)/tools/getos.py
 ms.osname := $(shell $(ms.getos))
-ms.tc_path := $(realpath $(ms.this_make_dir)nacl_sdk_root/toolchain)
-ms.lib_root := $(ms.this_make_dir)nacl_sdk_root/lib/pnacl
+ms.tc_path := $(realpath $(ms.nacl_sdk_root)/toolchain)
+ms.lib_root := $(ms.nacl_sdk_root)/lib/pnacl
 
 ms.pnacl_tc_bin := $(ms.tc_path)/$(ms.osname)_pnacl/bin
 ms.pnacl_cc := $(ms.pnacl_tc_bin)/pnacl-clang
@@ -144,6 +166,7 @@ ms.pnacl_finalize := $(ms.pnacl_tc_bin)/pnacl-finalize
 ms.pnacl_translate := $(ms.pnacl_tc_bin)/pnacl-translate
 ms.pnacl_strip := $(ms.pnacl_tc_bin)/pnacl-strip
 ms.pnacl_compress := $(ms.pnacl_tc_bin)/pnacl-compress
+endif
 
 #
 # should we include the Debug or Release lib path?
@@ -172,7 +195,18 @@ ms.em_link := emcc
 	$(ms.touch) $@
 
 #
-# Convert a source path to an object file path.
+# We use a set of node modules to do various things, and these
+# are listed in our package.json file.  Whenever our node_modules
+# directory is missing, or the special ".ms_stamp" is missing,
+# or older than the package.json file we run "nmp install"
+#
+$(ms.this_make_dir)node_modules/.ms_stamp : $(ms.this_make_dir)package.json
+	@cd $(ms.this_make_dir) && npm install
+	$(ms.mkdir) -p $(@D)
+	$(ms.touch) $@
+
+#
+# Convert a source (c/c++) path to an object file path.
 #
 # $1 = Source Name
 # $2 = Compiler suffix
@@ -180,7 +214,7 @@ ms.em_link := emcc
 ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(patsubst ./%,%,$(subst ..,__,$(1))))$(2).o
 
 #
-# Convert a source path to a dependency file path.
+# Convert a source (c/c++) path to a dependency file path.
 #
 # $1 = Source Name
 # $2 = Compiler suffix
@@ -188,9 +222,23 @@ ms.src_to_obj=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(patsubst ./%,%,$(sub
 ms.src_to_dep=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(patsubst ./%,%,$(subst ..,__,$(1))))$(2).d
 
 #
+# Convert a source (js6) path to an obj js(5).
+#
+# $1 = Source Name
+# $2 = Compiler suffix
+#
+ms.src_to_js=$(ms.INTERMEDIATE_DIR)/$(CONFIG)/$(basename $(patsubst ./%,%,$(subst ..,__,$(1)))).js
+
+
+#
 # Convert a (re)source path to it's equivalent auto_gen file
 #
 ms.resrc_to_auto_gen=$(ms.INTERMEDIATE_DIR)/auto_gen/$(patsubst ./%,%,$(subst ..,__,$(1))).cpp
+
+#
+# Convert a built file to it's equivalent aws_prep file
+#
+ms.targ_to_aws_prep=$(ms.OUT_DIR)/aws_prep/$(CONFIG)/$(2)/$(notdir $(1))
 
 #
 # Tool to either display short-form (when verbose is off) or
@@ -221,6 +269,27 @@ ifeq (release,$(CONFIG))
 endif
 
 #
+# a white space - useful in some string processing
+#
+ms.space:=
+ms.space+=
+
+#
+# a comma - also useful in string processing
+#
+ms.comma:=,
+
+
+#
+# a newline - also useful in string processing
+#
+define ms.newline
+
+
+endef
+
+
+#
 # compiler flags that are used in release and debug builds for all compilers
 #
 CFLAGS_release+=-DNDEBUG
@@ -230,7 +299,7 @@ CFLAGS_debug+=-g
 #
 # all pnacl compiles include this path
 #
-CFLAGS_pnacl+=-I$(realpath $(ms.this_make_dir)nacl_sdk_root/include/pnacl)
+CFLAGS_pnacl+=-I$(realpath $(ms.nacl_sdk_root)/include/pnacl)
 
 #
 # something in DEBUG stuff causes link failures in emcc (at least version 1.16)
@@ -252,23 +321,75 @@ LDFLAGS_emcc_debug+=-s ASSERTIONS=1
 CFLAGS_pnacl_release+=-O2
 LDFLAGS_pnacl_release+=-O2
 
+BROWSERIFY_FLAGS_release+=-t $$(realpath $(ms.this_make_dir)node_modules/uglifyify)
+
+
+ifneq (,$(NODE_PATH))
+ ms.node_path:=$(NODE_PATH):$(realpath $(ms.this_make_dir))/node_modules
+else
+
+ ifneq (,$(wildcard ./node_modules))
+  ms.node_path:=$(realpath $(ms.this_make_dir))/node_modules:$(realpath ./node_modules)
+ else
+  ms.node_path:=$(realpath $(ms.this_make_dir))/node_modules
+ endif
+
+endif
+
+##############################################################################
+
+
+# Interface processing
+
+ifneq (,$(ms.API_FILE))
+
+ms.make_frag:=$(subst \#,$(ms.newline),$(shell export NODE_PATH=$(ms.node_path)\
+  && node $(ms.this_make_dir)msbind.js\
+     --config_file=$(ms.API_FILE) --task=write_make_rules --component_name=$(ms.BUILD_NAME) | tr '\n' '\#'))
+$(eval $(ms.make_frag))
+
+ms.EM_EXPORTS+=$(shell export NODE_PATH=$(ms.node_path)\
+  && node $(ms.this_make_dir)msbind.js\
+      --config_file=$(ms.API_FILE) --task=write_em_exports)
+
+SOURCES+=$(ms.INTERMEDIATE_DIR)/auto_gen/interface_glue.cpp
+
+ms.EM_LIBRARIES+=$(ms.INTERMEDIATE_DIR)/auto_gen/library_glue.js
+
 #
-# If your build needs some additional symbols exported in the emcc build, you can add them by defining them
-# in ms.EM_EXPORTS
+# for now, a sloppy rule that says the the build output file of every js6 file in
+# SOURCES is dependent on this auto-generated js file
 #
-ms.EM_EXPORTS+='_MS_Init', '_MS_MouseProc', '_MS_FocusProc', '_MS_KeyProc', '_MS_DidChangeView', '_MS_TouchProc', 'Pointer_stringify', '_MS_MessageProc', '_MS_DoCallbackProc', '_MS_SetLocale', '_MS_AsyncStartupComplete', '_main'
+$(foreach js_src,$(filter %.js6,$(SOURCES)),$(eval $(ms.OUT_DIR)/$(CONFIG)/$(basename $(notdir $(js_src))).js: node_modules/$(ms.BUILD_NAME)-bind/$(ms.BUILD_NAME)-bind.js))
+
+endif
+
+##############################################################################
+
+ms.EM_EXPORTS+=main malloc free MS_Callback MS_AsyncStartupComplete
+
+#
+# If your build needs additional emcc libraries you can add them by defining them in
+# ms.EM_LIBRARIES similar to the way they are done here
+#
+ms.EM_LIBRARIES+=\
+$(ms.this_make_dir)library_mutantspider.js\
+$(ms.this_make_dir)library_rezfs.js\
+$(ms.this_make_dir)library_pbmemfs.js
 
 #
 # the projects we are interested in produce smaller files if memory-init-file is turned on.  We also add some standard asm.js library stuff
 #
-CFLAGS_emcc+=--memory-init-file 1
-LDFLAGS_emcc+=--memory-init-file 1 -s EXPORTED_FUNCTIONS="[$(ms.EM_EXPORTS)]" --js-library $(ms.this_make_dir)library_mutantspider.js --js-library $(ms.this_make_dir)library_rezfs.js
-
-#
-# This filesystem implementation will hopefully, eventually get merged into emscripten
-# itself.  For now we use our own copy, and so add this to the link
-#
-LDFLAGS_emcc+=--js-library $(ms.this_make_dir)library_pbmemfs.js
+CFLAGS_emcc+=--memory-init-file 1 -s ALLOW_MEMORY_GROWTH=0 -s ABORTING_MALLOC=0
+LDFLAGS_emcc+=\
+  --memory-init-file 1\
+  -s ALLOW_MEMORY_GROWTH=0\
+  -s ABORTING_MALLOC=0\
+  -s EXPORTED_FUNCTIONS="['_$(subst $(ms.space),'$(ms.comma) '_,$(sort $(ms.EM_EXPORTS)))']"\
+  -s MODULARIZE=1\
+  -s EXPORT_NAME=\'$(1)_Module\'\
+  -s NO_EXIT_RUNTIME=1\
+  $(foreach lib,$(ms.EM_LIBRARIES),--js-library $(lib))
 
 #
 # a few files that implement some (mostly emscripten) support code
@@ -276,6 +397,7 @@ LDFLAGS_emcc+=--js-library $(ms.this_make_dir)library_pbmemfs.js
 ms.additional_sources:=\
 $(ms.this_make_dir)mutantspider.cpp\
 $(ms.this_make_dir)mutantspider_fs.cpp
+
 
 #
 # everyone will need to #include "mutantspider.h"
@@ -286,10 +408,10 @@ ms.additional_inc_dirs=$(ms.this_make_dir)
 # before the compiler options check logic
 #
 ifneq (,$(RESOURCES))
-CFLAGS+=-DMUTANTSPIDER_HAS_RESOURCES
+CFLAGS+=-DMS_HAS_RESOURCES
 endif
 
-
+ifneq (,$(ms.c_sources))
 ifneq (clean,$(MAKECMDGOALS))
 #
 # helper function to compare current options to previously used options
@@ -366,6 +488,9 @@ display_opts:
 	@cat $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts
 	@echo
 
+# end of "if we have c/c++ sources"
+endif
+
 #
 # helper target to see some interesting targets you can pass to make
 #
@@ -386,7 +511,7 @@ define ms.c_compile_rule
 -include $(call ms.src_to_dep,$(1),_js)
 
 $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_pnacl.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.CALL_TOOL,$(ms.pnacl_cc),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.this_make_dir)nacl_sdk_root/include $(2) $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.pnacl_cc),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.nacl_sdk_root)/include $(2) $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
 $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
 	$(call ms.CALL_TOOL,$(ms.em_cc),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js) $(2) $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
@@ -399,10 +524,19 @@ define ms.cxx_compile_rule
 -include $(call ms.src_to_dep,$(1),_js)
 
 $(call ms.src_to_obj,$(1),_pnacl): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_pnacl.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.CALL_TOOL,$(ms.pnacl_cxx),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.this_make_dir)nacl_sdk_root/include $(2) -std=gnu++11 $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.pnacl_cxx),-o $$@ -c $$< -MD -MF $(call ms.src_to_dep,$(1),_pnacl) -I$(ms.nacl_sdk_root)/include $(2) -std=gnu++14 $(CFLAGS) $(CFLAGS_pnacl) $(CFLAGS_$(CONFIG)) $(CFLAGS_pnacl_$(CONFIG)) $(CFLAGS_pnacl_$(1)),$$@)
 
 $(call ms.src_to_obj,$(1),_js): $(1) $(ms.INTERMEDIATE_DIR)/$(CONFIG)/compiler_emcc.opts | $(dir $(call ms.src_to_obj,$(1)))dir.stamp
-	$(call ms.CALL_TOOL,$(ms.em_cxx),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js) $(2) -std=c++0x $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
+	$(call ms.CALL_TOOL,$(ms.em_cxx),-o $$@ $$< -MD -MF $(call ms.src_to_dep,$(1),_js) $(2) -std=c++14 $(CFLAGS) $(CFLAGS_$(CONFIG)) $(CFLAGS_emcc) $(CFLAGS_emcc_$(CONFIG)) $(CFLAGS_emcc_$(1)),$$@)
+
+endef
+
+define ms.js_compile_rule
+
+$(ms.OUT_DIR)/$(CONFIG)/$(basename $(notdir $(1))).js: $(1) $(ms.this_make_dir)node_modules/.ms_stamp
+	$(ms.mkdir) -p $$(@D)
+	@echo "transpiling       $$@"
+	@export NODE_PATH=$(ms.node_path) && $(ms.this_make_dir)node_modules/browserify/bin/cmd.js $$< -t [ $$(realpath $(ms.this_make_dir)node_modules/babelify) --extensions .js6 ] $(BROWSERIFY_FLAGS_$(CONFIG)) -o $$@
 
 endef
 
@@ -452,15 +586,22 @@ endef
 endif
 
 #
+# append module launcher .js snippet
+#
+ms.append_js=@cat $(ms.this_make_dir)ww_module_launcher.js >> $1
+
+#
 #	$1	unprefixed and unpostfixed final executable name
 #	$2	list of source files to compile and link
 #
 #	Note that the this target will ignore any source file that is included in $(emcc_EXCLUDE)
 #
 define ms.em_linker_rule
-$(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(sort $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js)))
+$(ms.OUT_DIR)/$(CONFIG)/$(1).js: $(ms.INTERMEDIATE_DIR)/$(CONFIG)/linker_emcc.opts $(sort $(foreach src,$(filter-out $(emcc_EXCLUDE),$(2)),$(call ms.src_to_obj,$(src),_js))) $$(ms.EM_LIBRARIES) $(ms.APPEND_JS)
 	$(ms.mkdir) -p $$(@D)
-	$(call ms.CALL_TOOL,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_$(CONFIG)) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
+	$(call ms.CALL_TOOL,$(ms.em_link),$(LDFLAGS) $(LDFLAGS_emcc) $(LDFLAGS_emcc_$(CONFIG)) -o $$@ $$(filter-out %.opts %.js,$$^),$(ms.OUT_DIR)/$(CONFIG)/$(1).js)
+	$(call ms.append_js, $$@)
+
 
 #
 # bug in gnumake???
@@ -490,8 +631,10 @@ define ms.BUILD_RULES
 
 $(foreach cpp_src,$(filter %.cc %.cpp,$(2) $(ms.additional_sources)),$(call ms.cxx_compile_rule,$(cpp_src),$(foreach inc,$(3) $(ms.additional_inc_dirs),-I$(inc))))
 $(foreach c_src,$(filter %.c,$(2) $(ms.additional_sources)),$(call ms.c_compile_rule,$(c_src),$(foreach inc,$(3) $(ms.additional_inc_dirs),-I$(inc))))
-$(call ms.nacl_linker_rule,$(1),$(2) $(ms.additional_sources),$(4))
-$(call ms.em_linker_rule,$(1),$(2) $(ms.additional_sources))
+$(call ms.nacl_linker_rule,$(1),$(filter %.cc %.cpp %.c,$(2)) $(ms.additional_sources),$(4))
+$(call ms.em_linker_rule,$(1),$(filter %.cc %.cpp %.c,$(2)) $(ms.additional_sources))
+
+$(foreach js_src,$(filter %.js6,$(2)),$(call ms.js_compile_rule,$(js_src)))
 
 endef
 
@@ -509,10 +652,11 @@ ifneq (,$(RESOURCES))
 #
 #		rules:
 #			X	-> XX
+#           -   -> X__
 #			.	-> X_
 #           /   -> XS
 #
-ms.sanitize_rez_name=rezRec_$(subst /,XS,$(subst .,X_,$(subst X,XX,$(1))))
+ms.sanitize_rez_name=rezRec_$(subst /,XS,$(subst -,X__,$(subst .,X_,$(subst X,XX,$(1)))))
 
 
 #
@@ -527,7 +671,6 @@ ifeq (mac,$(ms.osname))
  ms.file_size=`stat -f %z $(1)`
  ms.nlescape=\'$$'
 endif
-
 
 #
 # $1 file name of path/file to be treated as a resource.  The recipe for this
@@ -676,8 +819,6 @@ ms.display_parent_dir=$(if $($(1)_DST_DIR),/resources$($(1)_DST_DIR),/resources)
 $(foreach rez,$(sort $(RESOURCES)),$(eval ms.display_rez_fmt_string+=%-40s%s\n))
 $(foreach rez,$(sort $(RESOURCES)),$(eval ms.display_rez_data_string+=$(call ms.display_parent_dir,$(rez))/$(notdir $(rez)) $(rez)))
 
-ms.space:=
-ms.space+=
 ms.display_rez_fmt_string:= $(subst $(ms.space),,$(ms.display_rez_fmt_string))
 
 #
@@ -718,25 +859,92 @@ endif
 ###############################################################################################
 
 
-
 ifneq (0,$(ms.DO_NEXE))
  ms.nacl_ext=nexe
 else
  ms.nacl_ext=pexe
 endif
 
+
 #
-#	$1 the name of the web application you will be building
+# the target files we would produce from c/c++ sources
 #
-# The list of "interesting" files that this will produce.  This set of files
-# will frequently be the ones you will want to move to some kind of "deploy"
-# directory as part of building an entire web page that uses these components.
-#
-ms.TARGET_LIST=\
+ms.c_target_list=\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).$(ms.nacl_ext)\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).nmf\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js\
 $(ms.OUT_DIR)/$(CONFIG)/$(1).js.mem
 
+#
+# the target file we would produce from js6 sources
+#
+ms.js_target_list=\
+$(ms.OUT_DIR)/$(CONFIG)/$(1)_api.js
+
+ms.if_c_target_list=$(if $(filter %.cc %.cpp %.c,$(2)),$(call ms.c_target_list,$(1)))
+ms.js_target_list=$(foreach js_src,$(filter %.js6,$(1)),$(ms.OUT_DIR)/$(CONFIG)/$(basename $(notdir $(js_src))).js)
+
+#
+#	$1 the name of the web application you will be building
+# $2 (OPTIONAL) the sources from which you will be building your application
+#
+# The list of "interesting" files that this will produce.  This set of files
+# will frequently be the ones you will want to move to some kind of "deploy"
+# directory as part of building an entire web page that uses these components.
+#
+# The purpose of the optional, second parameter is to distinguish cases when
+# you are building a native component from c/c++ sources from when you are
+# building something from js6 files.  If the second parameter is not supplied
+# it assumes you are building from c/c++ and are not building anything from js6
+#
+ms.TARGET_LIST=$(if $(2),$(call ms.if_c_target_list,$(1),$(2)) $(call ms.js_target_list,$(2)),$(call ms.c_target_list,$(1))) $(if $(ms.API_FILE),node_modules/$(ms.BUILD_NAME)-bind/$(ms.BUILD_NAME)-bind.js)
+
 %.nmf: $(basename $(notdir %)).$(ms.nacl_ext)
-	$(call ms.CALL_TOOL,python,$(ms.this_make_dir)nacl_sdk_root/tools/create_nmf.py -o $@ $^ -s $(@D),$@)
+	$(call ms.CALL_TOOL,python,$(ms.nacl_sdk_root)/tools/create_nmf.py -o $@ $^ -s $(@D),$@)
+
+###############################################################################################
+#
+#   Upload to s3 bucket
+#
+###############################################################################################
+
+ms.upload_files=$(ms.EXTRA_DEPLOY_FILES) $(call ms.TARGET_LIST,$(ms.BUILD_NAME),$(SOURCES))
+
+.PHONY: post_build post_debug_build
+post_build post_debug_build: $(ms.upload_files) $(ms.this_make_dir)node_modules/.ms_stamp
+	@$(MAKE) post_build -f $(ms.this_make_dir)post_build.mk UPLOAD_FILES="$(ms.upload_files)" PREP_DIR=$(ms.UPLOAD_PREP_DIR)/$(CONFIG) POST_COMPONENTS_DESC=$(ms.POST_DESC) NODE_PATH=$(ms.node_path) V=$(V)
+
+
+ifneq (,$(ms.POST_COMPONENTS_DESC))
+
+ifeq (unified_build,$(MAKECMDGOALS))
+
+ms.post_prereq_files = $(shell export NODE_PATH=$(ms.node_path)\
+  && node $(ms.this_make_dir)config_to_prereqs.js\
+     $(realpath $(ms.POST_COMPONENTS_DESC))\
+     $(ROOT_UNIFIED_DIR)/tmp_build_files/unified/$(CONFIG)/$(UNIFIED_COMP_NAME) true)
+
+define ms.copy_file_rule
+$1: $(realpath $(ms.DEV_DEPLOY_DIR)/$(CONFIG))/$(notdir $1)
+	$$(ms.mkdir) -p $$(@D)
+	$$(call ms.CALL_TOOL,ln,-f $$^ $$@,$$@)
+
+endef
+
+$(foreach file,$(ms.post_prereq_files),$(eval $(call ms.copy_file_rule,$(file))))
+
+.PHONY: unified_build
+unified_build: $(ms.post_prereq_files) $(ms.this_make_dir)node_modules/.ms_stamp
+
+
+endif
+
+endif
+
+###############################################################################################
+#
+#   End of upload to s3 bucket
+#
+###############################################################################################
+
+	

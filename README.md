@@ -13,16 +13,14 @@ set up.  Mutantspider also contains a small amount javascript helper code lettin
 automatically load the PNaCl or asm.js version of your C/C++ code depending on the capabilities of the browser
 viewing your page.
 
-Mutantspider contains a C/C++ programming interface derived from the Native Client programming model Pepper.
-In many cases classes in Pepper's "pp" namespace have identical names in the "mutantspider" namespace.  When
-the code is compiled for PNaCl these mutantspider classes are directly mapped to the same-named classes in
-Pepper.  When compiling for asm.js they are implemented, frequently with supporting code in javascript.
+Mutantspider contains support to automatically construct the binding glue necessary to allow javascript and
+C/C++ to call each other.
 
 <b>Getting Started</b>
 
-The best way to get started is to build and run some of the example projects in the "examples" directory.
-For example, opening a console window and cd'ing to mutantspider/examples/hello_spider lets you then run
-'make' to build the hello_spider web application.  Building any of these examples will require that your
-machine have both the NaCl and Emscripten SDKs installed.  These are both freely available for download
-on the web.
+The best way to get started is to run, or better yet build, some of the example projects that use Mutantspider.
+The source code for these can be found in the mutantspider-examples repository.  A very simple, "hello world"
+style Mutantspider project that is already built and running as a web page can be found [here]
+(http://www.mutantspider.tech/code/hello-spider/index.html)
+
 
