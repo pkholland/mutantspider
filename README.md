@@ -19,7 +19,7 @@ C/C++ to call each other.
 <b>Getting Started</b>
 
 The best way to get started is to run, or better yet build, some of the example projects that use Mutantspider.
-The source code for these can be found in the [mutantspider-examples repository](https://github.com/pkholland/mutantspider-examples).  A very simple, "hello world"
+The source code for these can be found in the [mutantspider-examples ](https://github.com/pkholland/mutantspider-examples) repository.  A very simple, "hello world"
 style Mutantspider project that is already built and running as a web page can be found [here]
 (http://www.mutantspider.tech/code/hello-spider/index.html)
 
