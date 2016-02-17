@@ -41,18 +41,18 @@ ms.prep_upload_files:=\
 $(foreach file,$(UPLOAD_FILES),$(PREP_DIR)/$(notdir $(file)).gz)\
 $(foreach file,$(UPLOAD_FILES),$(PREP_DIR)/$(notdir $(file)).sha1)
 
-ms.call_config_to_make:=\
+ms.call_finalize_build:=\
   --config_file=$(realpath $(POST_COMPONENTS_DESC))\
   --prep_dir=$(PREP_DIR)\
   --build_files="$(UPLOAD_FILES)"
 
 ifneq (,$(BUILD_LABEL))
-ms.call_config_to_make+=--build_label=$(BUILD_LABEL)
+ms.call_finalize_build+=--build_label=$(BUILD_LABEL)
 endif
 
 ms.make_frag=$(subst \#,$(ms.newline),$(shell export NODE_PATH=$(NODE_PATH)\
-  && node $(ms.this_make_dir)config_to_make.js\
-     $(ms.call_config_to_make) | tr '\n' '\#'))
+  && node $(ms.this_make_dir)finalize_build.js\
+     $(ms.call_finalize_build) | tr '\n' '\#'))
 $(eval $(ms.make_frag))
 
 #
