@@ -111,7 +111,7 @@ ms.read_file_and_start(argv.config_file, first_pass_make, (config_str) => {
       console.error('');
       console.error('In Ubuntu Linux you can install it by executing:');
       console.error('');
-      console.error('sudo apt-get install exuterant-ctags');
+      console.error('sudo apt-get install exuberant-ctags');
       console.error('');
       console.log('$(error )');
     }
