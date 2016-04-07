@@ -907,7 +907,7 @@ ms.upload_files=$(ms.EXTRA_DEPLOY_FILES) $(call ms.TARGET_LIST,$(ms.BUILD_NAME),
 
 .PHONY: post_build post_debug_build
 post_build post_debug_build: $(ms.upload_files) $(ms.this_make_dir)node_modules/.ms_stamp
-	@$(MAKE) post_build -f $(ms.this_make_dir)post_build.mk UPLOAD_FILES="$(ms.upload_files)" PREP_DIR=$(ms.UPLOAD_PREP_DIR)/$(CONFIG) POST_COMPONENTS_DESC=$(ms.POST_DESC) NODE_PATH=$(ms.node_path) V=$(V)
+	@$(MAKE) post_build -f $(ms.this_make_dir)post_build.mk UPLOAD_FILES="$(ms.upload_files)" PREP_DIR=$(ms.UPLOAD_PREP_DIR)/$(CONFIG) POST_COMPONENTS_DESC=$(ms.POST_DESC) NODE_PATH=$(ms.node_path) MODULE_NAME=$(ms.BUILD_NAME)-bind.js.mod V=$(V)
 
 
 ifneq (,$(ms.POST_COMPONENTS_DESC))

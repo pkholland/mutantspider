@@ -59,7 +59,7 @@ ms.read_file_and_start(argv.config_file, true, (config_str) => {
     // that we won't scan their contents looking for text patterns.
     let bin_exts = [ '.mem', '.pexe' ];
     
-    // for each file in file_list that is a text-like type, check to see with other file(s) in
+    // for each file in file_list that is a text-like type, check to see what other file(s) in
     // file_list it contains a reference to.  For example, if file_list contains both "index.html"
     // and "app.js", and the contents of index.html contains the string "app.js" then we record
     // the fact that "index.html" contains a reference to (and so is dependent on) "app.js"
@@ -107,13 +107,27 @@ ms.read_file_and_start(argv.config_file, true, (config_str) => {
     
     // a "top level" component is one that is not referenced by any other component, not
     // in the same strongly connected component.  There is a good chance that these are
-    // files like "index.html" that we will want to display on the command line
+    // files like "index.html" that we will want to display on the command line - other
+    // than the <component>-bind.js file, which should be treated as a node module.
+    let node_modules = [];
     make_string += 'ms.top_components:=';
     file_list.forEach((file_name) => {
-      if (!is_a_dependent[file_name])
-        make_string += ' ' + file_name;
+      if (!is_a_dependent[file_name]) {
+        if ((file_name.length > '-bind.js'.length) && (file_name.substr(file_name.length - '-bind.js'.length) == '-bind.js')) {
+          node_modules.push(file_name);
+          make_string += ' ' + file_name + '.mod';
+        }
+        else
+          make_string += ' ' + file_name;
+      }
     });
     make_string += '\n\n';
+
+    // now any "top level" file that is also a node module gets a custom make rule
+    // that does he tar step
+    node_modules.forEach((file_name) => {
+      make_string += make_rule_module(file_name);
+    });
     
     // if we get this far without an exception, then 'make_string' will contain the make snippet
     // for everything we have computed.  So write that to stdout and exit.
@@ -257,6 +271,36 @@ ms.read_file_and_start(argv.config_file, true, (config_str) => {
       
       return rules;
     
+    }
+
+    function make_rule_module(file_name) {
+
+      let js_name = prep_dir + file_name + '.mod.dir/package.json\n';
+      let to_js = ' >> ' + js_name;
+      let rule = prep_dir + file_name + '.mod: ' + prep_dir + file_name + '\n';
+      rule += '\trm -rf ' + prep_dir + file_name + '.mod.dir\n';
+      rule += '\tmkdir -p ' + prep_dir + file_name + '.mod.dir\n';
+      rule += '\tcp ' + prep_dir + file_name + ' ' + prep_dir + file_name + '.mod.dir\n';
+      rule += '\techo "{" > ' + js_name;
+      rule += '\techo " \\"name\\": \\"' + file_name + '\\","' + to_js;
+      rule += '\techo "  \\"version\\": \\"0.0.1\\","' + to_js;
+      rule += '\techo " \\"readme\\": \\"nothing to see...\\","' + to_js;
+      rule += '\techo " \\"description\\": \\"nothing to say...\\","' + to_js;
+      rule += '\techo " \\"repository\\": {\\"type\\": \\"git\\", \\"url\\":\\"git@git.madeup.com:auto/madeup.git\\"},"' + to_js;
+      rule += '\techo " \\"main\\": \\"' + file_name + '\\","' + to_js;
+      rule += '\techo "  \\"author\\": \\"shakespeare\\","' + to_js;
+      rule += '\techo "  \\"license\\": \\"ISC\\","' + to_js;
+      rule += '\techo "  \\"dependencies\\": {}"' + to_js;
+      rule += '\techo "}"' + to_js;
+      rule += '\t(cd ' + prep_dir + ' && tar -cf ' + file_name + '.mod ' + file_name + '.mod.dir)\n\n';
+
+      rule += prep_dir + file_name + '.mod.gz: ' + prep_dir + file_name + '.mod\n';
+      rule += '\t$(call ms.CALL_TOOL,gzip,-fnc9 $^ > $@,$@)\n\n';
+
+      rule += prep_dir + file_name + '.mod.sha1: ' + prep_dir + file_name + '.mod\n'
+      rule += '\t$(call ms.CALL_TOOL,shasum,$^ | sed \'s/ .*//\' > $@,$@)\n\n';
+
+      return rule + '\n';
     }
 
 

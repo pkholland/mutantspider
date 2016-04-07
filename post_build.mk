@@ -39,7 +39,10 @@ ms.do_sed = sed "s|\"$1\"|\"$2/$1.`cat $3`\"|g" | sed "s|'$1'|'$2/$1.`cat $3`'|g
 
 ms.prep_upload_files:=\
 $(foreach file,$(UPLOAD_FILES),$(PREP_DIR)/$(notdir $(file)).gz)\
-$(foreach file,$(UPLOAD_FILES),$(PREP_DIR)/$(notdir $(file)).sha1)
+$(foreach file,$(UPLOAD_FILES),$(PREP_DIR)/$(notdir $(file)).sha1)\
+$(PREP_DIR)/$(MODULE_NAME).gz\
+$(PREP_DIR)/$(MODULE_NAME).sha1\
+
 
 ms.call_finalize_build:=\
   --config_file=$(realpath $(POST_COMPONENTS_DESC))\
@@ -73,6 +76,7 @@ export NODE_PATH=$(NODE_PATH) &&\
   --git_origin_url=`git config --get remote.origin.url`\
   --git_branch=`git rev-parse --abbrev-ref HEAD`\
   --build_os="`uname -a`"\
+  --module_name=$(MODULE_NAME)\
   --verbose=$(V)
 
 ifneq (,$(shell which emcc))

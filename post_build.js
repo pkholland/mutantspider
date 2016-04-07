@@ -47,6 +47,8 @@ ms.read_file_and_start(argv.config_file, false, (config_str) => {
     
     // TODO - this should keep sub directory structure beneath argv.build_dir, but currently doesn't!
     let file_list_arr = argv.build_files.split(' ');
+    if (argv.module_name != '')
+      file_list_arr.push(argv.module_name);
     let file_list = [];
     file_list_arr.forEach((file_name) => {
       let basename = path.basename(file_name);
@@ -171,14 +173,16 @@ ms.read_file_and_start(argv.config_file, false, (config_str) => {
           verbose_log('skipping upload, server already contains matching file for: ' + file_name + '.' + sha1);
         else {
           uploads.push(new Promise((resolve, reject) => {
+
+            let is_module = file_name.includes('-bind.js.mod');
             
             let params = {
               Bucket:config.s3_bucket,
               Key:ms.root_dir + remote_file_name,
-              Body:fs.createReadStream(prep_dir + file_name + '.gz'),
+              Body:fs.createReadStream(prep_dir + file_name + (is_module ? '' : '.gz')),
               ACL:'public-read',
               ContentType:get_contentType(file_name),
-              ContentEncoding:'gzip'
+              ContentEncoding:is_module ? 'identity' : 'gzip'
             }
             console.log('uploading         ' + ms.root_dir + remote_file_name);
             s3.upload(params, (error, data) => {
